@@ -452,6 +452,7 @@ public class BtSerial implements Runnable {
 	 */
 	public void clear() {
 		buffer = new byte[bufferlength];
+		mConnectedThread.clear();
 	}
 
 	/**

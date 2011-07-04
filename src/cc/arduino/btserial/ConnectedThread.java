@@ -117,6 +117,14 @@ public class ConnectedThread extends Thread {
 	public int available() {
 		return (bufferLast - bufferIndex);
 	}
+	
+	 /**
+	   * Ignore all the bytes read so far and empty the buffer.
+	   */
+	  public void clear() {
+	    bufferLast = 0;
+	    bufferIndex = 0;
+	  }
 
 	/* Call this from the main Activity to shutdown the connection */
 	public void cancel() {
