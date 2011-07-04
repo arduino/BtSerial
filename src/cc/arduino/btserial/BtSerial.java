@@ -218,7 +218,7 @@ public class BtSerial implements Runnable {
 
 		} else {
 			connected = false;
-			if (DEBUG) Log.i("System.out", "Addres is not Bluetooth, please verify MAC.");
+			if (DEBUG) Log.i("System.out", "Address is not Bluetooth, please verify MAC.");
 
 			return false;
 		}
@@ -262,7 +262,6 @@ public class BtSerial implements Runnable {
 			/* Read the available bytes into the buffer */
 			rawbuffer= mConnectedThread.read();
 			available = mConnectedThread.available();
-			if (available>0) Log.i("system.out", "I got " + available + " bytes");
 			/* Clone the raw buffer */
 			buffer = rawbuffer.clone();
 		}
@@ -339,8 +338,8 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int readBytes(byte[] buffer) {
-		buffer = this.buffer.clone();
-		return available;
+		buffer = mConnectedThread.read().clone();
+		return mConnectedThread.available();
 	}
 
 	/**
@@ -394,11 +393,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public String readString() {
-		String returnstring = null;
-
-		for (int i = 0; i < buffer.length; i++)
-			returnstring += (char) buffer[i];
-
+		String returnstring = new String(readBytes());
 		return returnstring;
 	}
 
