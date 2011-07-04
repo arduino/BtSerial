@@ -197,8 +197,7 @@ public class BtSerial implements Runnable {
 				mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
 				mSocket.connect();
 
-				/* Set the status */
-				connected = true;
+				
 
 				// Start the thread to manage the connection and perform transmissions
 				mConnectedThread = new ConnectedThread(mSocket, bufferlength);
@@ -206,21 +205,20 @@ public class BtSerial implements Runnable {
 
 				if (DEBUG) Log.i("System.out", "Connected to device " + mDevice.getName()
 						+ " [" + mDevice.getAddress() + "]");
-
-				return true;
+				// Set the status 
+				connected = true;
+				return connected;
 			} catch (IOException e) {
+				Log.i("System.out", "Couldn't get a connection");
 				connected = false;
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-
-				return false;
+				return connected;
 			}
 
 		} else {
-			connected = false;
+			
 			if (DEBUG) Log.i("System.out", "Address is not Bluetooth, please verify MAC.");
-
-			return false;
+			connected = false;
+			return connected;
 		}
 	}
 
