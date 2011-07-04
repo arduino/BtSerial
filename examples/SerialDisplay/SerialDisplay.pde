@@ -4,7 +4,6 @@
  Displays an incoming string from the serial connection.
  If it gets a newline, it clears the string
  
- Not working yet.
  
  created 27 June 2011
  modified 3 July 2011
@@ -14,17 +13,15 @@
 
 import cc.arduino.btserial.*;
 
-//For GUI
-String[] fontList;
-PFont androidFont;
+
 // instance of the library:
 BtSerial bt;
-String inString = "";
+String inString = "";    // string for incoming data
 
 void setup() {
   // Setup Fonts:
-  fontList = PFont.list();
-  androidFont = createFont(fontList[0], 8, true);
+  String[] fontList = PFont.list();
+  PFont androidFont = createFont(fontList[0], 24, true);
   textFont(androidFont, 24);
   textAlign(CENTER);
 
@@ -32,6 +29,7 @@ void setup() {
   bt = new BtSerial( this );
   // get a list of paired devices:
   String[] pairedDevices = bt.list();
+  
   if (pairedDevices.length > 0) {
     println(pairedDevices);
     // open a connection to the first one:
@@ -59,10 +57,11 @@ void draw() {
       // if there are incoming bytes available, read one:
       if (bt.available() > 0) {
         inByte = char(bt.read());
+        // if you get a newline, clear the string:
         if (inByte == '\n') {
           inString = "";
         } 
-        else {
+        else {    // otherwise add the byte to the string
           inString += inByte;
         }
       }
@@ -78,9 +77,5 @@ void pause() {
     bt.disconnect();
   }
 }
-
-void resume() {
-}
-
 
 
