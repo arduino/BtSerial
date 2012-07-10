@@ -1,6 +1,40 @@
+2012-02-16  Elie Zananiri
+      * version 0.4.7
+      * fixed up formatting to match new tool template
+
+2011-12-23  Elie Zananiri
+      * version 0.4.6
+      * changed the default Java compile version to 1.6
+      * added a "library.paragraph" to build.properties, used in the library.properties file
+      * added "library.sentence" and "library.paragraph" fields to index.html
+
+2011-11-17  Elie Zananiri
+      * version 0.4.5
+      * updated the library categories
+
+2011-11-10  Elie Zananiri
+      * version 0.4.4
+      * updated the build script to use the correct delimiter based on the OS when parsing source files
+
+2011-11-09  Elie Zananiri
+      * version 0.4.3
+      * removed the "-latest" suffix from the generated file names as it could lead to confusion when unzipping the library
+      * added the version number to the download link text to avoid confusion with the pretty version string
+      
+2011-11-07  Elie Zananiri
+      * version 0.4.2
+      * fixed some warnings in the Ant build script
+      
+2011-11-03  Elie Zananiri
+      * version 0.4.1
+      * added the library.properties file, used for the library engine in Processing 2.0
+      * added new fields to build.properties to fill in the library.properties file
+      * the script now generates two copies of the zip and properties file: one with the version number appended and another with "latest" appended (for the Processing 2.0 library engine)
+
 2010-05-07  Andreas Schlegel
       * version 0.3.2
       * build.xml: removing delete tag for bin folder, did cause issues with class referencing inside eclipse
+      * build.xml: for users using 0.3.1, comment out <delete dir="${project.bin}"/> inside target clean
 
 2010-05-01  Andreas Schlegel
       * version 0.3.1
