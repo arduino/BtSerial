@@ -19,6 +19,7 @@ public class ConnectedThread extends Thread {
 	private int bufferIndex;
 	private int bufferLast;
 	private int available;
+	private final String TAG = "System.out";
 
 
 	public ConnectedThread(BluetoothSocket socket, int bufferLength) {
@@ -38,10 +39,12 @@ public class ConnectedThread extends Thread {
 		mmOutStream = tmpOut;	
 
 		buffer = new byte[mBufferLength];  // buffer store for the stream
+		Log.i(TAG, "started");
 	}
 
 	@Override
 	public void run() {
+		Log.i(TAG, "running");
 		int bytes; // bytes returned from read()
 
 		// Keep listening to the InputStream until an exception occurs
@@ -49,6 +52,8 @@ public class ConnectedThread extends Thread {
 			try {
 				// Read from the InputStream
 				while (mmInStream.available() > 0) {
+					String outputMessage = mmInStream.available() + " bytes available";
+					Log.i(TAG, outputMessage);
 					synchronized (buffer) {
 						if (bufferLast == buffer.length) {
 							byte temp[] = new byte[bufferLast << 1];
@@ -81,37 +86,37 @@ public class ConnectedThread extends Thread {
 	 * readBytes(byte b[]) (see below).
 	 */
 	public byte[] read() {
-		if (bufferIndex == bufferLast) return null;
-
-		synchronized (buffer) {
-			int length = bufferLast - bufferIndex;
-			byte outgoing[] = new byte[length];
-			System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
-
-			bufferIndex = 0;  // rewind
-			bufferLast = 0;
-			return outgoing;
-		}
-	}
-	
-	/**
-	   * Returns a number between 0 and 255 for the next byte that's
-	   * waiting in the buffer.
-	   * Returns -1 if there was no byte (although the user should
-	   * first check available() to see if things are ready to avoid this)
-	   */
-	  public int readByte() {
-	    if (bufferIndex == bufferLast) return -1;
+	    if (bufferIndex == bufferLast) return null;
 
 	    synchronized (buffer) {
-	      int outgoing = buffer[bufferIndex++] & 0xff;
-	      if (bufferIndex == bufferLast) {  // rewind
-	        bufferIndex = 0;
-	        bufferLast = 0;
-	      }
+	      int length = bufferLast - bufferIndex;
+	      byte outgoing[] = new byte[length];
+	      System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
+
+	      bufferIndex = 0;  // rewind
+	      bufferLast = 0;
 	      return outgoing;
 	    }
-	  }
+	}
+	
+//	/**
+//	   * Returns a number between 0 and 255 for the next byte that's
+//	   * waiting in the buffer.
+//	   * Returns -1 if there was no byte (although the user should
+//	   * first check available() to see if things are ready to avoid this)
+//	   */
+//	  public int readByte() {
+//	    if (bufferIndex == bufferLast) return -1;
+//
+//	    synchronized (buffer) {
+//	      int outgoing = buffer[bufferIndex++] & 0xff;
+//	      if (bufferIndex == bufferLast) {  // rewind
+//	        bufferIndex = 0;
+//	        bufferLast = 0;
+//	      }
+//	      return outgoing;
+//	    }
+//	  }
 
 
 	public int available() {
