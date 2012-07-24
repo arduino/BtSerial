@@ -35,7 +35,10 @@ import java.util.Vector;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -74,12 +77,11 @@ public class BtSerial implements Runnable {
 
 	/* Socket & streams for BT communication */
 	private BluetoothSocket mSocket;
+	private ConnectedThread mConnectedThread;
 	private boolean connected = false;
-	protected final InputStream mInStream;
-	protected final OutputStream mOutStream;
-	
+
 	/* Buffer */
-	private int bufferLength = 128;
+	private int bufferlength = 128;
 	private int available = 0;
 	private byte[] buffer;
 	private byte[] rawbuffer;
@@ -94,21 +96,6 @@ public class BtSerial implements Runnable {
 	
 	
 	public BtSerial(Context ctx) {
-		InputStream tmpIn = null;
-		OutputStream tmpOut = null;
-
-		// Get the input and output streams, using temp objects because
-		// member streams are final
-		try {
-			tmpIn = mSocket.getInputStream();
-			tmpOut = mSocket.getOutputStream();
-		} catch (IOException e) { }
-
-		mInStream = tmpIn;
-		mOutStream = tmpOut;	
-
-		buffer = new byte[bufferLength];  // buffer store for the stream
-		
 		this.ctx = ctx;
 		welcome();
 
@@ -214,6 +201,12 @@ public class BtSerial implements Runnable {
 				mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
 				mSocket.connect();
 
+				
+
+				// Start the thread to manage the connection and perform transmissions
+				mConnectedThread = new ConnectedThread(mSocket, bufferlength);
+				mConnectedThread.start();
+
 				Log.i(TAG, "Connected to device " + mDevice.getName()
 						+ " [" + mDevice.getAddress() + "]");
 				// Set the status 
@@ -238,7 +231,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int available() {
-		return (bufferLast - bufferIndex);
+		return mConnectedThread.available();
 	}
 
 	/**
@@ -261,33 +254,18 @@ public class BtSerial implements Runnable {
 	public void run() {
 		Log.i(TAG, "running");
 		/* Init the buffer */
-		buffer = new byte[bufferLength];
-		rawbuffer = new byte[bufferLength];
+		buffer = new byte[bufferlength];
+		rawbuffer = new byte[bufferlength];
 		
 		/* Set the connected state */
 		connected = true;
 
-		int bytes; // bytes returned from read()
-
-		// Keep listening to the InputStream until an exception occurs
-		while (true) {
-			try {
-				// Read from the InputStream
-				while (mInStream.available() > 0) {
-					String outputMessage = mInStream.available() + " bytes available";
-					Log.i(TAG, outputMessage);
-					synchronized (buffer) {
-						if (bufferLast == buffer.length) {
-							byte temp[] = new byte[bufferLast << 1];
-							System.arraycopy(buffer, 0, temp, 0, bufferLast);
-							buffer = temp;
-						}
-						buffer[bufferLast++] = (byte) mInStream.read();
-					}
-				}
-			} catch (IOException e) {
-				break;
-			}
+		while (connected) {
+			/* Read the available bytes into the buffer */
+			rawbuffer= mConnectedThread.read();
+			available = mConnectedThread.available();
+			/* Clone the raw buffer */
+			buffer = rawbuffer.clone();
 		}
 	}
 	
@@ -297,12 +275,16 @@ public class BtSerial implements Runnable {
 	 * 
 	 * @param buffer
 	 */
-	public void write(byte[] bytes) {
-		try {
-			mOutStream.write(bytes);
-		} catch (IOException e) { 
-			e.printStackTrace();
+	public  void write(byte[] buffer) {
+		// Create temporary object
+		ConnectedThread r;
+		// Synchronize a copy of the ConnectedThread
+		synchronized (this) {
+			if (!connected) return;
+			r = mConnectedThread;
 		}
+		// Perform the write unsynchronized
+		r.write(buffer);
 	}
 
 	/**
@@ -396,7 +378,7 @@ public class BtSerial implements Runnable {
 	 */
 	public byte[] readBytesUntil(byte interesting) {
 	    if (bufferIndex == bufferLast) return null;
-	    byte what = interesting;
+	    byte what = (byte)interesting;
 
 	    synchronized (buffer) {
 	      int found = -1;
@@ -477,7 +459,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int buffer(int bytes) {
-		bufferLength = bytes;
+		bufferlength = bytes;
 
 		buffer = new byte[bytes];
 		rawbuffer = buffer.clone();
@@ -507,9 +489,8 @@ public class BtSerial implements Runnable {
 	 * Clears the byte buffer.
 	 */
 	public void clear() {
-		buffer = new byte[bufferLength];
-	    bufferLast = 0;
-	    bufferIndex = 0;
+		buffer = new byte[bufferlength];
+		mConnectedThread.clear();
 	}
 
 	/**
@@ -520,6 +501,12 @@ public class BtSerial implements Runnable {
 	public synchronized void disconnect() {
 		if (connected) {
 			try {
+				// kill the connected thread if it's running:
+				if (mConnectedThread != null) {
+					mConnectedThread.cancel();
+					mConnectedThread = null;
+				}
+
 				/* Close the socket */
 				mSocket.close();
 
