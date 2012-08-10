@@ -43,7 +43,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-
 /* TODO */
 // ** available()
 // ** read()
@@ -63,7 +62,9 @@ import android.util.Log;
 // ** stop()
 // btSerialEvent()
 
-public class BtSerial implements Runnable {
+//public class BtSerial implements Runnable {
+
+public class BtSerial {
 
 	/* PApplet context */
 	private Context ctx;
@@ -93,8 +94,7 @@ public class BtSerial implements Runnable {
 	public static String DEBUGTAG = "##name## ##version## Debug message: ";
 
 	private final String TAG = "System.out";
-	
-	
+
 	public BtSerial(Context ctx) {
 		this.ctx = ctx;
 		welcome();
@@ -103,6 +103,7 @@ public class BtSerial implements Runnable {
 		new Handler(Looper.getMainLooper()).post(new Runnable() {
 			@Override
 			public void run() {
+				Log.i(TAG, "Handler running");
 				mAdapter = BluetoothAdapter.getDefaultAdapter();
 			}
 		});
@@ -124,9 +125,10 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public boolean isEnabled() {
-		if (mAdapter!=null) 
+		if (mAdapter != null)
 			return mAdapter.isEnabled();
-		else return false;
+		else
+			return false;
 	}
 
 	/**
@@ -147,7 +149,7 @@ public class BtSerial implements Runnable {
 			// remoteDevice and then print it's name
 			for (int i = 0; i < devices.size(); i++) {
 				BluetoothDevice thisDevice = mAdapter
-				.getRemoteDevice(deviceArray[i].toString());
+						.getRemoteDevice(deviceArray[i].toString());
 				list.addElement(thisDevice.getAddress());
 			}
 		} catch (UnsatisfiedLinkError e) {
@@ -163,7 +165,6 @@ public class BtSerial implements Runnable {
 
 	/*
 	 * Some stubs for future implementation:
-	 * 
 	 */
 	public void startDiscovery() {
 		// this method will start a separate thread to handle discovery
@@ -172,18 +173,19 @@ public class BtSerial implements Runnable {
 	public void pairWith(String thisAddress) {
 		// this method will pair with a device given a MAC address
 	}
+
 	public boolean discoveryComplete() {
 		// this method will return whether discovery is complete,
 		// so the user can then list devices
 		return false;
 	}
 
-
 	public String getName() {
-		if (mDevice !=null) return mDevice.getName();
-		else return "no device connected";
+		if (mDevice != null)
+			return mDevice.getName();
+		else
+			return "no device connected";
 	}
-
 
 	public synchronized boolean connect(String mac) {
 		/* Before we connect, make sure to cancel any discovery! */
@@ -201,15 +203,14 @@ public class BtSerial implements Runnable {
 				mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
 				mSocket.connect();
 
-				
-
-				// Start the thread to manage the connection and perform transmissions
+				// Start the thread to manage the connection and perform
+				// transmissions
 				mConnectedThread = new ConnectedThread(mSocket, bufferlength);
 				mConnectedThread.start();
 
-				Log.i(TAG, "Connected to device " + mDevice.getName()
-						+ " [" + mDevice.getAddress() + "]");
-				// Set the status 
+				Log.i(TAG, "Connected to device " + mDevice.getName() + " ["
+						+ mDevice.getAddress() + "]");
+				// Set the status
 				connected = true;
 				return connected;
 			} catch (IOException e) {
@@ -250,37 +251,39 @@ public class BtSerial implements Runnable {
 		return VERSION;
 	}
 
-	@Override
-	public void run() {
-		Log.i(TAG, "running");
-		/* Init the buffer */
-		buffer = new byte[bufferlength];
-		rawbuffer = new byte[bufferlength];
-		
-		/* Set the connected state */
-		connected = true;
-
-		while (connected) {
-			/* Read the available bytes into the buffer */
-			rawbuffer= mConnectedThread.read();
-			available = mConnectedThread.available();
-			/* Clone the raw buffer */
-			buffer = rawbuffer.clone();
-		}
-	}
-	
+	// @Override
+	// public void run() {
+	// Log.i(TAG, "BTSerial running");
+	// /* Init the buffer */
+	// buffer = new byte[bufferlength];
+	// rawbuffer = new byte[bufferlength];
+	//
+	// /* Set the connected state */
+	// connected = true;
+	//
+	// while (connected) {
+	// /* Read the available bytes into the buffer */
+	// rawbuffer= mConnectedThread.read();
+	// available = mConnectedThread.available();
+	// String output = Integer.toString(available);
+	// Log.i(TAG, output);
+	// /* Clone the raw buffer */
+	// buffer = rawbuffer.clone();
+	// }
+	// }
 
 	/**
 	 * Writes a byte[] buffer to the output stream.
 	 * 
 	 * @param buffer
 	 */
-	public  void write(byte[] buffer) {
+	public void write(byte[] buffer) {
 		// Create temporary object
 		ConnectedThread r;
 		// Synchronize a copy of the ConnectedThread
 		synchronized (this) {
-			if (!connected) return;
+			if (!connected)
+				return;
 			r = mConnectedThread;
 		}
 		// Perform the write unsynchronized
@@ -288,25 +291,24 @@ public class BtSerial implements Runnable {
 	}
 
 	/**
-	 * Writes a  String to the output stream.
+	 * Writes a String to the output stream.
 	 * 
 	 * @param thisString
 	 */
-	public  void write(String thisString) {
+	public void write(String thisString) {
 		byte[] thisBuffer = thisString.getBytes();
 		write(thisBuffer);
 	}
 
 	/**
-	 * Writes a  String to the output stream.
+	 * Writes a String to the output stream.
 	 * 
 	 * @param thisInt
 	 */
-	public  void write(int thisInt) {
-		byte[] thisBuffer = {(byte)thisInt};
+	public void write(int thisInt) {
+		byte[] thisBuffer = { (byte) thisInt };
 		write(thisBuffer);
 	}
-
 
 	/**
 	 * Returns the next byte in the buffer as an int (0-255);
@@ -314,16 +316,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int read() {
-	    if (bufferIndex == bufferLast) return -1;
-
-	    synchronized (buffer) {
-	      int outgoing = buffer[bufferIndex++] & 0xff;
-	      if (bufferIndex == bufferLast) {  // rewind
-	        bufferIndex = 0;
-	        bufferLast = 0;
-	      }
-	      return outgoing;
-	    }
+		return mConnectedThread.read();
 	}
 
 	/**
@@ -332,17 +325,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public byte[] readBytes() {
-	    if (bufferIndex == bufferLast) return null;
-
-	    synchronized (buffer) {
-	      int length = bufferLast - bufferIndex;
-	      byte outgoing[] = new byte[length];
-	      System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
-
-	      bufferIndex = 0;  // rewind
-	      bufferLast = 0;
-	      return outgoing;
-	    }
+		return mConnectedThread.readBytes();
 	}
 
 	/**
@@ -353,20 +336,8 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int readBytes(byte outgoing[]) {
-	    if (bufferIndex == bufferLast) return 0;
-
-	    synchronized (buffer) {
-	      int length = bufferLast - bufferIndex;
-	      if (length > outgoing.length) length = outgoing.length;
-	      System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
-
-	      bufferIndex += length;
-	      if (bufferIndex == bufferLast) {
-	        bufferIndex = 0;  // rewind
-	        bufferLast = 0;
-	      }
-	      return length;
-	    }
+		mConnectedThread.readBytes(outgoing);
+		return outgoing.length;
 	}
 
 	/**
@@ -377,30 +348,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public byte[] readBytesUntil(byte interesting) {
-	    if (bufferIndex == bufferLast) return null;
-	    byte what = (byte)interesting;
-
-	    synchronized (buffer) {
-	      int found = -1;
-	      for (int k = bufferIndex; k < bufferLast; k++) {
-	        if (buffer[k] == what) {
-	          found = k;
-	          break;
-	        }
-	      }
-	      if (found == -1) return null;
-
-	      int length = found - bufferIndex + 1;
-	      byte outgoing[] = new byte[length];
-	      System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
-
-	      bufferIndex += length;
-	      if (bufferIndex == bufferLast) {
-	        bufferIndex = 0;  // rewind
-	        bufferLast = 0;
-	      }
-	      return outgoing;
-	    }
+		return mConnectedThread.readBytesUntil(interesting);
 	}
 
 	/**
@@ -496,7 +444,6 @@ public class BtSerial implements Runnable {
 	/**
 	 * Disconnects the bluetooth socket.
 	 * 
-
 	 */
 	public synchronized void disconnect() {
 		if (connected) {
@@ -513,12 +460,14 @@ public class BtSerial implements Runnable {
 				/* Set the connected state */
 				connected = false;
 				/* If it successfully closes I guess we just return a success? */
-				//return 0;
+				// return 0;
+				Log.i(TAG, "disconnected.");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
+				Log.i(TAG, "whoops! disconnect() encountred an error.");
 				e.printStackTrace();
 				/* Otherwise we'll go ahead and say "no, this didn't work well!" */
-				//return 1;
+				// return 1;
 			}
 		}
 	}
@@ -532,4 +481,3 @@ public class BtSerial implements Runnable {
 
 	}
 }
-
