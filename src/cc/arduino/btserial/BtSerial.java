@@ -103,7 +103,7 @@ public class BtSerial {
 		new Handler(Looper.getMainLooper()).post(new Runnable() {
 			@Override
 			public void run() {
-				Log.i(TAG, "Handler running");
+				//Log.i(TAG, "Handler running");
 				mAdapter = BluetoothAdapter.getDefaultAdapter();
 			}
 		});
@@ -407,12 +407,7 @@ public class BtSerial {
 	 * @return
 	 */
 	public int buffer(int bytes) {
-		bufferlength = bytes;
-
-		buffer = new byte[bytes];
-		rawbuffer = buffer.clone();
-
-		return bytes;
+		return mConnectedThread.buffer(bytes);
 	}
 
 	/**

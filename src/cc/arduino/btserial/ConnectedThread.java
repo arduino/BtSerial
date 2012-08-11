@@ -82,26 +82,6 @@ public class ConnectedThread extends Thread {
 		}
 	}
 
-	// /**
-	// * Return a byte array of anything that's in the serial buffer.
-	// * Not particularly memory/speed efficient, because it creates
-	// * a byte array on each read, but it's easier to use than
-	// * readBytes(byte b[]) (see below).
-	// */
-	// public byte[] read() {
-	// if (bufferIndex == bufferLast) return null;
-	//
-	// synchronized (buffer) {
-	// int length = bufferLast - bufferIndex;
-	// byte outgoing[] = new byte[length];
-	// System.arraycopy(buffer, bufferIndex, outgoing, 0, length);
-	//
-	// bufferIndex = 0; // rewind
-	// bufferLast = 0;
-	// return outgoing;
-	// }
-	// }
-
 	/**
 	 * Returns the next byte in the buffer as an int (0-255);
 	 * 
@@ -120,25 +100,6 @@ public class ConnectedThread extends Thread {
 			return outgoing;
 		}
 	}
-
-	// /**
-	// * Returns a number between 0 and 255 for the next byte that's
-	// * waiting in the buffer.
-	// * Returns -1 if there was no byte (although the user should
-	// * first check available() to see if things are ready to avoid this)
-	// */
-	// public int readByte() {
-	// if (bufferIndex == bufferLast) return -1;
-	//
-	// synchronized (buffer) {
-	// int outgoing = buffer[bufferIndex++] & 0xff;
-	// if (bufferIndex == bufferLast) { // rewind
-	// bufferIndex = 0;
-	// bufferLast = 0;
-	// }
-	// return outgoing;
-	// }
-	// }
 
 	/**
 	 * Returns the whole byte buffer.
@@ -233,40 +194,6 @@ public class ConnectedThread extends Thread {
 	}
 
 	/**
-	 * Returns the next byte in the buffer as a char, if nothing is there it
-	 * returns -1.
-	 * 
-	 * @return
-	 */
-	public char readChar() {
-		return (char) read();
-	}
-
-	/**
-	 * Returns the buffer as a string.
-	 * 
-	 * @return
-	 */
-	public String readString() {
-		String returnstring = new String(readBytes());
-		return returnstring;
-	}
-
-	/**
-	 * Returns the buffer as string until character c.
-	 * 
-	 * @param c
-	 * @return
-	 */
-
-	public String readStringUntil(int interesting) {
-		byte b[] = readBytesUntil(interesting);
-		if (b == null)
-			return null;
-		return new String(b);
-	}
-
-	/**
 	 * Sets the number of bytes to buffer.
 	 * 
 	 * @param bytes
@@ -287,8 +214,24 @@ public class ConnectedThread extends Thread {
 	 * @return
 	 */
 	public int last() {
-		return buffer[buffer.length - 1];
+	    if (bufferIndex == bufferLast) return -1;
+	    synchronized (buffer) {
+	      int outgoing = buffer[bufferLast-1];
+	      bufferIndex = 0;
+	      bufferLast = 0;
+	      return outgoing;
+	    }
 	}
+	
+	  /**
+	   * Reads a byte from the buffer as char.
+	   * 
+	   * @return
+	   */
+	  public char readChar() {
+	    if (bufferIndex == bufferLast) return (char)(-1);
+	    return (char) last();
+	  }
 
 	/**
 	 * Returns the last byte in the buffer as char.
@@ -296,7 +239,8 @@ public class ConnectedThread extends Thread {
 	 * @return
 	 */
 	public char lastChar() {
-		return (char) buffer[buffer.length - 1];
+	    if (bufferIndex == bufferLast) return (char)(-1);
+	    return (char) last();
 	}
 
 	public int available() {
