@@ -99,15 +99,21 @@ public class BtSerial {
 		this.ctx = ctx;
 		welcome();
 
-		/* Init the adapter */
-		new Handler(Looper.getMainLooper()).post(new Runnable() {
-			@Override
-			public void run() {
-				//Log.i(TAG, "Handler running");
-				mAdapter = BluetoothAdapter.getDefaultAdapter();
-			}
-		});
-		Log.i(TAG, "started");
+//		/* Init the adapter */
+//		new Handler(Looper.getMainLooper()).post(new Runnable() {
+//			@Override
+//			public void run() {
+//				// Log.i(TAG, "Handler running");
+//				mAdapter = BluetoothAdapter.getDefaultAdapter();
+//				Log.i(TAG, "mAdapter instantiated");
+//			}
+//		});
+		try {
+			mAdapter = BluetoothAdapter.getDefaultAdapter();
+		} catch(Exception e) {
+			Log.e(TAG, Log.getStackTraceString(e));
+		}
+		Log.i(TAG, "Handler started");
 	}
 
 	/**
@@ -136,49 +142,58 @@ public class BtSerial {
 	 * 
 	 * @return
 	 */
-	public String[] list() {
+	public String[] list(boolean info) {
+		// Log.i(TAG, "list called");
 		Vector<String> list = new Vector<String>();
 		Set<BluetoothDevice> devices;
 
 		try {
+			// Log.i(TAG, "getBondedDevices()");
 			devices = mAdapter.getBondedDevices();
 			// convert the devices 'set' into an array so that we can
 			// perform string functions on it
+			// Log.i(TAG, "devices.toArray()");
 			Object[] deviceArray = devices.toArray();
 			// step through it and assign each device in turn to
 			// remoteDevice and then print it's name
+			// Log.i(TAG, "getAddress");
 			for (int i = 0; i < devices.size(); i++) {
-				BluetoothDevice thisDevice = mAdapter
-						.getRemoteDevice(deviceArray[i].toString());
-				list.addElement(thisDevice.getAddress());
+				BluetoothDevice thisDevice = mAdapter.getRemoteDevice(deviceArray[i].toString());
+				String element = thisDevice.getAddress();
+				if (info) element += "," + thisDevice.getName(); //extended information
+				list.addElement(element);
 			}
 		} catch (UnsatisfiedLinkError e) {
-			// errorMessage("devices", e);
+			Log.e(TAG, Log.getStackTraceString(e));
 		} catch (Exception e) {
-			// errorMessage("devices", e);
+			Log.e(TAG, Log.getStackTraceString(e));
 		}
 
 		String outgoing[] = new String[list.size()];
 		list.copyInto(outgoing);
 		return outgoing;
 	}
+	
+	public String[] list() {
+		return list(false);
+	}
 
 	/*
 	 * Some stubs for future implementation:
 	 */
-	public void startDiscovery() {
-		// this method will start a separate thread to handle discovery
-	}
-
-	public void pairWith(String thisAddress) {
-		// this method will pair with a device given a MAC address
-	}
-
-	public boolean discoveryComplete() {
-		// this method will return whether discovery is complete,
-		// so the user can then list devices
-		return false;
-	}
+//	public void startDiscovery() {
+//		// this method will start a separate thread to handle discovery
+//	}
+//
+//	public void pairWith(String thisAddress) {
+//		// this method will pair with a device given a MAC address
+//	}
+//
+//	public boolean discoveryComplete() {
+//		// this method will return whether discovery is complete,
+//		// so the user can then list devices
+//		return false;
+//	}
 
 	public String getName() {
 		if (mDevice != null)
@@ -251,25 +266,25 @@ public class BtSerial {
 		return VERSION;
 	}
 
-	// @Override
+	// // @Override
 	// public void run() {
-	// Log.i(TAG, "BTSerial running");
-	// /* Init the buffer */
-	// buffer = new byte[bufferlength];
-	// rawbuffer = new byte[bufferlength];
-	//
-	// /* Set the connected state */
-	// connected = true;
-	//
-	// while (connected) {
-	// /* Read the available bytes into the buffer */
-	// rawbuffer= mConnectedThread.read();
-	// available = mConnectedThread.available();
-	// String output = Integer.toString(available);
-	// Log.i(TAG, output);
-	// /* Clone the raw buffer */
-	// buffer = rawbuffer.clone();
-	// }
+	// // Log.i(TAG, "BTSerial running");
+	// // /* Init the buffer */
+	// // buffer = new byte[bufferlength];
+	// // rawbuffer = new byte[bufferlength];
+	// //
+	// // /* Set the connected state */
+	// // connected = true;
+	// //
+	// // while (connected) {
+	// // /* Read the available bytes into the buffer */
+	// // rawbuffer = mConnectedThread.read();
+	// // available = mConnectedThread.available();
+	// // String output = Integer.toString(available);
+	// // Log.i(TAG, output);
+	// // /* Clone the raw buffer */
+	// // buffer = rawbuffer.clone();
+	// // }
 	// }
 
 	/**
