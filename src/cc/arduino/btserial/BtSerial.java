@@ -1,5 +1,6 @@
 /**
- * you can put a one sentence description of your library here.
+ * ##project.name##
+ * ##library.sentence##
  *
  * ##copyright##
  *
@@ -20,7 +21,7 @@
  * 
  * @author		##author##
  * @modified	##date##
- * @version		##version##
+ * @version		##library.prettyVersion##
  */
 
 package cc.arduino.btserial;
@@ -44,37 +45,24 @@ import android.os.Looper;
 import android.util.Log;
 
 /* TODO */
-// ** available()
-// ** read()
-// ** connect()
-// ** readChar()
-// ** readBytes()
-// readBytesUntil()
-// readString()
-// readStringUntil()
 // ** buffer()
 // bufferUntil()
-// ** last()
-// ** lastChar()
-// ** list()
-// ** write()
-// ** clear()
-// ** stop()
 // btSerialEvent()
 
-//public class BtSerial implements Runnable {
 
 public class BtSerial {
 
 	/* PApplet context */
 	private Context ctx;
 
-	public final static String VERSION = "##version##";
+	public final static String VERSION = "##library.prettyVersion##";
 
 	/* Bluetooth */
 	private BluetoothAdapter mAdapter;
 	private BluetoothDevice mDevice;
-	private UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	private UUID uuidSpp = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	private UUID uuidSecure = UUID.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+	private UUID uuidInecure = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
 	/* Socket & streams for BT communication */
 	private BluetoothSocket mSocket;
@@ -91,44 +79,35 @@ public class BtSerial {
 
 	/* Debug variables */
 	public static boolean DEBUG = true;
-	public static String DEBUGTAG = "##name## ##version## Debug message: ";
+	public static String DEBUGTAG = "##library.name## " + VERSION + " Debug message: ";
 
-	private final String TAG = "System.out";
-
+	private final String TAG = "System.out";	
+	
 	public BtSerial(Context ctx) {
 		this.ctx = ctx;
 		welcome();
 
-//		/* Init the adapter */
-//		new Handler(Looper.getMainLooper()).post(new Runnable() {
-//			@Override
-//			public void run() {
-//				// Log.i(TAG, "Handler running");
-//				mAdapter = BluetoothAdapter.getDefaultAdapter();
-//				Log.i(TAG, "mAdapter instantiated");
-//			}
-//		});
 		try {
 			mAdapter = BluetoothAdapter.getDefaultAdapter();
 		} catch(Exception e) {
 			Log.e(TAG, Log.getStackTraceString(e));
 		}
-		Log.i(TAG, "Handler started");
+		Log.i(TAG, "BluetoothAdapter started");
 	}
 
 	/**
 	 * Returns the status of the connection.
 	 * 
-	 * @return
+	 * @return true or false
 	 */
 	public boolean isConnected() {
 		return connected;
 	}
 
 	/**
-	 * Returns whether the adapter is enabled.
+	 * Returns whether the Bluetooth dapter is enabled.
 	 * 
-	 * @return
+	 * @return true of false
 	 */
 	public boolean isEnabled() {
 		if (mAdapter != null)
@@ -138,29 +117,41 @@ public class BtSerial {
 	}
 
 	/**
-	 * Returns the list of bonded devices.
+	 * Returns a list of bonded (paired) devices.
 	 * 
-	 * @return
+	 * @param info flag to control display of additional information (device names and types)
+	 * @return String array 
 	 */
 	public String[] list(boolean info) {
-		// Log.i(TAG, "list called");
 		Vector<String> list = new Vector<String>();
 		Set<BluetoothDevice> devices;
 
 		try {
-			// Log.i(TAG, "getBondedDevices()");
 			devices = mAdapter.getBondedDevices();
 			// convert the devices 'set' into an array so that we can
 			// perform string functions on it
-			// Log.i(TAG, "devices.toArray()");
 			Object[] deviceArray = devices.toArray();
 			// step through it and assign each device in turn to
 			// remoteDevice and then print it's name
-			// Log.i(TAG, "getAddress");
 			for (int i = 0; i < devices.size(); i++) {
 				BluetoothDevice thisDevice = mAdapter.getRemoteDevice(deviceArray[i].toString());
 				String element = thisDevice.getAddress();
-				if (info) element += "," + thisDevice.getName(); //extended information
+				if (info) {
+					/*
+					 * public static final int AUDIO_VIDEO	Constant Value: 1024 (0x00000400)
+					 * public static final int COMPUTER	Constant Value: 256 (0x00000100)
+					 * public static final int HEALTH	Constant Value: 2304 (0x00000900)
+					 * public static final int IMAGING	Constant Value: 1536 (0x00000600)
+					 * public static final int MISC	Constant Value: 0 (0x00000000)
+					 * public static final int NETWORKING	Constant Value: 768 (0x00000300)
+					 * public static final int PERIPHERAL	Constant Value: 1280 (0x00000500)
+					 * public static final int PHONE	Constant Value: 512 (0x00000200)
+					 * public static final int TOY	Constant Value: 2048 (0x00000800)
+					 * public static final int UNCATEGORIZED	Constant Value: 7936 (0x00001f00)
+					 * public static final int WEARABLE	Constant Value: 1792 (0x00000700)
+					 */
+					element += "," + thisDevice.getName() +"," + thisDevice.getBluetoothClass().getMajorDeviceClass(); //extended information
+				}
 				list.addElement(element);
 			}
 		} catch (UnsatisfiedLinkError e) {
@@ -173,6 +164,12 @@ public class BtSerial {
 		list.copyInto(outgoing);
 		return outgoing;
 	}
+	
+	/**
+	 * Returns a list of hardware (MAC) addresses of bonded (paired) devices.
+	 * 
+	 * @return String array 
+	 */
 	
 	public String[] list() {
 		return list(false);
@@ -194,6 +191,12 @@ public class BtSerial {
 //		// so the user can then list devices
 //		return false;
 //	}
+	
+	/**
+	 * Returns the name of the currently connected device.
+	 * 
+	 * @return String 
+	 */
 
 	public String getName() {
 		if (mDevice != null)
@@ -201,6 +204,22 @@ public class BtSerial {
 		else
 			return "no device connected";
 	}
+	
+	/**
+	 * Connects to a Bluetooth device.
+	 * 
+	 * The connect() method will attempt to determine what type of
+	 * device is currently specified by mac and will select one of
+	 * the following Service Profile UUIDs accordingly.
+	 * <p>
+	 * Currently only Android-to-serial modem (Arduino) and Android-
+	 * to-serial port (computer) connections are supported.
+	 * <p>
+	 * TODO: Implement listen method for Android-to-Android connections
+	 * 
+	 * @param mac - hardware (MAC) address of the remote device
+	 * @return boolean flag for if connection was successful 
+	 */
 
 	public synchronized boolean connect(String mac) {
 		/* Before we connect, make sure to cancel any discovery! */
@@ -215,7 +234,33 @@ public class BtSerial {
 			mDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(mac);
 			/* Create the RFCOMM sockets */
 			try {
-				mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
+				int deviceMajorClass = mDevice.getBluetoothClass().getMajorDeviceClass();
+				/* From http://developer.android.com/reference/android/bluetooth/BluetoothClass.Device.Major.html
+				 * public static final int AUDIO_VIDEO	Constant Value: 1024 (0x00000400)
+				 * public static final int COMPUTER	Constant Value: 256 (0x00000100)
+				 * public static final int HEALTH	Constant Value: 2304 (0x00000900)
+				 * public static final int IMAGING	Constant Value: 1536 (0x00000600)
+				 * public static final int MISC	Constant Value: 0 (0x00000000)
+				 * public static final int NETWORKING	Constant Value: 768 (0x00000300)
+				 * public static final int PERIPHERAL	Constant Value: 1280 (0x00000500)
+				 * public static final int PHONE	Constant Value: 512 (0x00000200)
+				 * public static final int TOY	Constant Value: 2048 (0x00000800)
+				 * public static final int UNCATEGORIZED	Constant Value: 7936 (0x00001f00)
+				 * public static final int WEARABLE	Constant Value: 1792 (0x00000700)
+				 */
+				if (deviceMajorClass == 512) {
+					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSecure); //if the device is a phone
+					Log.i(TAG, "connecting to phone");
+				}
+				else if (deviceMajorClass == 256) {
+					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp); //if the device is a computer
+					Log.i(TAG, "connecting to computer");
+				}
+				else if (deviceMajorClass == 7936) {
+					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp); //if the device is uncategorized (like a BtMate modem for Arduino)
+					Log.i(TAG, "connecting to uncategorized");
+				}
+				
 				mSocket.connect();
 
 				// Start the thread to manage the connection and perform
@@ -240,7 +285,8 @@ public class BtSerial {
 			return connected;
 		}
 	}
-
+	
+	
 	/**
 	 * Returns the available number of bytes in the buffer.
 	 * 
@@ -251,10 +297,10 @@ public class BtSerial {
 	}
 
 	/**
-	 * 
+	 * Displays the Library welcome message
 	 */
 	private void welcome() {
-		Log.i(TAG, "##name## ##version## by ##author##");
+		Log.i(TAG, "##library.name## "+ VERSION + " by ##author##");
 	}
 
 	/**
@@ -265,27 +311,6 @@ public class BtSerial {
 	public static String version() {
 		return VERSION;
 	}
-
-	// // @Override
-	// public void run() {
-	// // Log.i(TAG, "BTSerial running");
-	// // /* Init the buffer */
-	// // buffer = new byte[bufferlength];
-	// // rawbuffer = new byte[bufferlength];
-	// //
-	// // /* Set the connected state */
-	// // connected = true;
-	// //
-	// // while (connected) {
-	// // /* Read the available bytes into the buffer */
-	// // rawbuffer = mConnectedThread.read();
-	// // available = mConnectedThread.available();
-	// // String output = Integer.toString(available);
-	// // Log.i(TAG, output);
-	// // /* Clone the raw buffer */
-	// // buffer = rawbuffer.clone();
-	// // }
-	// }
 
 	/**
 	 * Writes a byte[] buffer to the output stream.
@@ -347,7 +372,7 @@ public class BtSerial {
 	 * Returns the available number of bytes in the buffer, and copies the
 	 * buffer contents to the passed byte[]
 	 * 
-	 * @param buffer
+	 * @param outgoing[]
 	 * @return
 	 */
 	public int readBytes(byte outgoing[]) {
@@ -356,31 +381,31 @@ public class BtSerial {
 	}
 
 	/**
-	 * Returns a bytebuffer until the byte b. If the byte b doesn't exist in the
+	 * Returns a byte buffer until the byte interesting. If the byte interesting doesn't exist in the
 	 * current buffer, null is returned.
 	 * 
-	 * @param b
-	 * @return
+	 * @param interesting
+	 * @return array of bytes retreived from buffer
 	 */
 	public byte[] readBytesUntil(byte interesting) {
 		return mConnectedThread.readBytesUntil(interesting);
 	}
 
-	/**
-	 * TODO
-	 * 
-	 * @param b
-	 * @param buffer
-	 */
-	public void readBytesUntil(byte b, byte[] buffer) {
-		Log.i(TAG, "Will do a.s.a.p.");
-	}
+//	/**
+//	 * TODO
+//	 * 
+//	 * @param b
+//	 * @param buffer
+//	 */
+//	public void readBytesUntil(byte b, byte[] buffer) {
+//		Log.i(TAG, "Will do a.s.a.p.");
+//	}
 
 	/**
-	 * Returns the next byte in the buffer as a char, if nothing is there it
-	 * returns -1.
+	 * Read the next byte in the buffer as a char
 	 * 
-	 * @return
+	 * @return next byte in the buffer as a char; if nothing is there it
+	 * returns -1.
 	 */
 	public char readChar() {
 		return (char) read();
@@ -389,7 +414,7 @@ public class BtSerial {
 	/**
 	 * Returns the buffer as a string.
 	 * 
-	 * @return
+	 * @return contents of the buffer as a String
 	 */
 	public String readString() {
 		String returnstring = new String(readBytes());
@@ -399,8 +424,8 @@ public class BtSerial {
 	/**
 	 * Returns the buffer as string until character c.
 	 * 
-	 * @param c
-	 * @return
+	 * @param c - character to read until
+	 * @return String data read before encountering c
 	 */
 	public String readStringUntil(char c) {
 		/* Get the buffer as string */
@@ -418,8 +443,8 @@ public class BtSerial {
 	/**
 	 * Sets the number of bytes to buffer.
 	 * 
-	 * @param bytes
-	 * @return
+	 * @param bytes new size of the buffer
+	 * @return 
 	 */
 	public int buffer(int bytes) {
 		return mConnectedThread.buffer(bytes);
@@ -428,7 +453,8 @@ public class BtSerial {
 	/**
 	 * Returns the last byte in the buffer.
 	 * 
-	 * @return
+	 * @return the last byte in the buffer
+	 * @see char()
 	 */
 	public int last() {
 		return buffer[buffer.length - 1];
@@ -437,7 +463,8 @@ public class BtSerial {
 	/**
 	 * Returns the last byte in the buffer as char.
 	 * 
-	 * @return
+	 * @return the last char in the buffer.
+	 * @see last()
 	 */
 	public char lastChar() {
 		return (char) buffer[buffer.length - 1];
@@ -447,13 +474,18 @@ public class BtSerial {
 	 * Clears the byte buffer.
 	 */
 	public void clear() {
-		buffer = new byte[bufferlength];
 		mConnectedThread.clear();
 	}
 
 	/**
-	 * Disconnects the bluetooth socket.
+	 * Disconnects the Bluetooth socket.
 	 * 
+	 * This should be called in the pause() and stop() methods inside the
+	 * sketch in order to ensure that the socket is properly closed when the
+	 * sketch is not running. The connection should be re-established in a
+	 * resume() method if the sketch loses and then regains focus.
+	 * 
+	 * @see connect()
 	 */
 	public synchronized void disconnect() {
 		if (connected) {

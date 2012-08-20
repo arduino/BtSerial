@@ -42,12 +42,12 @@ public class ConnectedThread extends Thread {
 		mmOutStream = tmpOut;
 
 		buffer = new byte[mBufferLength]; // buffer store for the stream
-		Log.i(TAG, "started");
+		//Log.i(TAG, "started");
 	}
 
 	@Override
 	public void run() {
-		Log.i(TAG, "ConnectedThread running");
+		//Log.i(TAG, "ConnectedThread running");
 		int bytes; // bytes returned from read()
 
 		// Keep listening to the InputStream until an exception occurs
@@ -85,7 +85,7 @@ public class ConnectedThread extends Thread {
 	/**
 	 * Returns the next byte in the buffer as an int (0-255);
 	 * 
-	 * @return
+	 * @return int value of the next byte in the buffer
 	 */
 	public int read() {
 		if (bufferIndex == bufferLast)
@@ -148,10 +148,10 @@ public class ConnectedThread extends Thread {
 	}
 
 	/**
-	 * Returns a bytebuffer until the byte b. If the byte b doesn't exist in the
+	 * Returns a byte buffer until the byte interesting. If the byte interesting doesn't exist in the
 	 * current buffer, null is returned.
 	 * 
-	 * @param b
+	 * @param interesting
 	 * @return
 	 */
 	public byte[] readBytesUntil(int interesting) {
@@ -182,16 +182,16 @@ public class ConnectedThread extends Thread {
 			return outgoing;
 		}
 	}
-
-	/**
-	 * TODO
-	 * 
-	 * @param b
-	 * @param buffer
-	 */
-	public void readBytesUntil(byte b, byte[] buffer) {
-		Log.i(TAG, "Will do a.s.a.p.");
-	}
+//
+//	/**
+//	 * TODO
+//	 * 
+//	 * @param b
+//	 * @param buffer
+//	 */
+//	public void readBytesUntil(byte b, byte[] buffer) {
+//		Log.i(TAG, "Will do a.s.a.p.");
+//	}
 
 	/**
 	 * Sets the number of bytes to buffer.
