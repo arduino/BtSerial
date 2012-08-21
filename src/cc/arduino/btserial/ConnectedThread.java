@@ -7,6 +7,9 @@ package cc.arduino.btserial;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
+
+import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
@@ -24,8 +27,13 @@ public class ConnectedThread extends Thread {
 	private int available;
 	private final String TAG = "System.out";
 
-	public ConnectedThread(BluetoothSocket socket, int bufferLength) {
+	private BtSerial mBtSerial;
+	
+	public ConnectedThread(BluetoothSocket socket, int bufferLength,
+			BtSerial mBtSerial) {
+		this.mBtSerial = mBtSerial;
 		mmSocket = socket;
+		
 		InputStream tmpIn = null;
 		OutputStream tmpOut = null;
 		mBufferLength = bufferLength;
@@ -42,12 +50,12 @@ public class ConnectedThread extends Thread {
 		mmOutStream = tmpOut;
 
 		buffer = new byte[mBufferLength]; // buffer store for the stream
-		//Log.i(TAG, "started");
+		// Log.i(TAG, "started");
 	}
 
 	@Override
 	public void run() {
-		//Log.i(TAG, "ConnectedThread running");
+		// Log.i(TAG, "ConnectedThread running");
 		int bytes; // bytes returned from read()
 
 		// Keep listening to the InputStream until an exception occurs
@@ -65,12 +73,18 @@ public class ConnectedThread extends Thread {
 							buffer = temp;
 						}
 						buffer[bufferLast++] = (byte) mmInStream.read();
+						newData();
 					}
 				}
 			} catch (IOException e) {
 				break;
 			}
 		}
+	}
+
+	public void newData() {
+		mBtSerial.newData();
+		// Log.i(TAG, "newData called from ConnectedThread");
 	}
 
 	/* Call this from the main Activity to send data to the remote device */
@@ -148,8 +162,8 @@ public class ConnectedThread extends Thread {
 	}
 
 	/**
-	 * Returns a byte buffer until the byte interesting. If the byte interesting doesn't exist in the
-	 * current buffer, null is returned.
+	 * Returns a byte buffer until the byte interesting. If the byte interesting
+	 * doesn't exist in the current buffer, null is returned.
 	 * 
 	 * @param interesting
 	 * @return
@@ -182,16 +196,17 @@ public class ConnectedThread extends Thread {
 			return outgoing;
 		}
 	}
-//
-//	/**
-//	 * TODO
-//	 * 
-//	 * @param b
-//	 * @param buffer
-//	 */
-//	public void readBytesUntil(byte b, byte[] buffer) {
-//		Log.i(TAG, "Will do a.s.a.p.");
-//	}
+
+	//
+	// /**
+	// * TODO
+	// *
+	// * @param b
+	// * @param buffer
+	// */
+	// public void readBytesUntil(byte b, byte[] buffer) {
+	// Log.i(TAG, "Will do a.s.a.p.");
+	// }
 
 	/**
 	 * Sets the number of bytes to buffer.
@@ -214,24 +229,26 @@ public class ConnectedThread extends Thread {
 	 * @return
 	 */
 	public int last() {
-	    if (bufferIndex == bufferLast) return -1;
-	    synchronized (buffer) {
-	      int outgoing = buffer[bufferLast-1];
-	      bufferIndex = 0;
-	      bufferLast = 0;
-	      return outgoing;
-	    }
+		if (bufferIndex == bufferLast)
+			return -1;
+		synchronized (buffer) {
+			int outgoing = buffer[bufferLast - 1];
+			bufferIndex = 0;
+			bufferLast = 0;
+			return outgoing;
+		}
 	}
-	
-	  /**
-	   * Reads a byte from the buffer as char.
-	   * 
-	   * @return
-	   */
-	  public char readChar() {
-	    if (bufferIndex == bufferLast) return (char)(-1);
-	    return (char) last();
-	  }
+
+	/**
+	 * Reads a byte from the buffer as char.
+	 * 
+	 * @return
+	 */
+	public char readChar() {
+		if (bufferIndex == bufferLast)
+			return (char) (-1);
+		return (char) last();
+	}
 
 	/**
 	 * Returns the last byte in the buffer as char.
@@ -239,8 +256,9 @@ public class ConnectedThread extends Thread {
 	 * @return
 	 */
 	public char lastChar() {
-	    if (bufferIndex == bufferLast) return (char)(-1);
-	    return (char) last();
+		if (bufferIndex == bufferLast)
+			return (char) (-1);
+		return (char) last();
 	}
 
 	public int available() {

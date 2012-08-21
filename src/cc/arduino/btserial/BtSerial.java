@@ -32,9 +32,11 @@ import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
+import java.lang.reflect.*;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -49,7 +51,6 @@ import android.util.Log;
 // bufferUntil()
 // btSerialEvent()
 
-
 public class BtSerial {
 
 	/* PApplet context */
@@ -60,9 +61,12 @@ public class BtSerial {
 	/* Bluetooth */
 	private BluetoothAdapter mAdapter;
 	private BluetoothDevice mDevice;
-	private UUID uuidSpp = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-	private UUID uuidSecure = UUID.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
-	private UUID uuidInecure = UUID.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
+	private UUID uuidSpp = UUID
+			.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	private UUID uuidSecure = UUID
+			.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+	private UUID uuidInecure = UUID
+			.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
 	/* Socket & streams for BT communication */
 	private BluetoothSocket mSocket;
@@ -77,22 +81,50 @@ public class BtSerial {
 	private int bufferIndex;
 	private int bufferLast;
 
+	Method newDataMethod;
+
 	/* Debug variables */
 	public static boolean DEBUG = true;
-	public static String DEBUGTAG = "##library.name## " + VERSION + " Debug message: ";
+	public static String DEBUGTAG = "##library.name## " + VERSION
+			+ " Debug message: ";
 
-	private final String TAG = "System.out";	
-	
+	private final String TAG = "System.out";
+
 	public BtSerial(Context ctx) {
 		this.ctx = ctx;
 		welcome();
 
 		try {
 			mAdapter = BluetoothAdapter.getDefaultAdapter();
-		} catch(Exception e) {
+		} catch (Exception e) {
 			Log.e(TAG, Log.getStackTraceString(e));
 		}
 		Log.i(TAG, "BluetoothAdapter started");
+
+		// reflection to check whether host applet has a call for
+		// public void serialEvent(processing.serial.Serial)
+		// which would be called each time an event comes in
+		try {
+			newDataMethod = ctx.getClass().getMethod("newData",
+					new Class[] { BtSerial.class });
+		} catch (Exception e) {
+			// no such method, or an error.. which is fine, just ignore
+		}
+	}
+
+	public void newData() {
+		if (newDataMethod != null) {
+			try {
+				newDataMethod.invoke(ctx, new Object[] { this });
+				// Log.i(TAG, "newData called from BtSerial");
+			} catch (Exception e) {
+				String msg = "error, disabling newData() for "
+						+ mDevice.getName();
+				Log.e(TAG, msg);
+				e.printStackTrace();
+				newDataMethod = null;
+			}
+		}
 	}
 
 	/**
@@ -119,8 +151,10 @@ public class BtSerial {
 	/**
 	 * Returns a list of bonded (paired) devices.
 	 * 
-	 * @param info flag to control display of additional information (device names and types)
-	 * @return String array 
+	 * @param info
+	 *            flag to control display of additional information (device
+	 *            names and types)
+	 * @return String array
 	 */
 	public String[] list(boolean info) {
 		Vector<String> list = new Vector<String>();
@@ -134,23 +168,16 @@ public class BtSerial {
 			// step through it and assign each device in turn to
 			// remoteDevice and then print it's name
 			for (int i = 0; i < devices.size(); i++) {
-				BluetoothDevice thisDevice = mAdapter.getRemoteDevice(deviceArray[i].toString());
+				BluetoothDevice thisDevice = mAdapter
+						.getRemoteDevice(deviceArray[i].toString());
 				String element = thisDevice.getAddress();
 				if (info) {
-					/*
-					 * public static final int AUDIO_VIDEO	Constant Value: 1024 (0x00000400)
-					 * public static final int COMPUTER	Constant Value: 256 (0x00000100)
-					 * public static final int HEALTH	Constant Value: 2304 (0x00000900)
-					 * public static final int IMAGING	Constant Value: 1536 (0x00000600)
-					 * public static final int MISC	Constant Value: 0 (0x00000000)
-					 * public static final int NETWORKING	Constant Value: 768 (0x00000300)
-					 * public static final int PERIPHERAL	Constant Value: 1280 (0x00000500)
-					 * public static final int PHONE	Constant Value: 512 (0x00000200)
-					 * public static final int TOY	Constant Value: 2048 (0x00000800)
-					 * public static final int UNCATEGORIZED	Constant Value: 7936 (0x00001f00)
-					 * public static final int WEARABLE	Constant Value: 1792 (0x00000700)
-					 */
-					element += "," + thisDevice.getName() +"," + thisDevice.getBluetoothClass().getMajorDeviceClass(); //extended information
+					element += ","
+							+ thisDevice.getName()
+							+ ","
+							+ thisDevice.getBluetoothClass()
+									.getMajorDeviceClass(); // extended
+															// information
 				}
 				list.addElement(element);
 			}
@@ -164,13 +191,13 @@ public class BtSerial {
 		list.copyInto(outgoing);
 		return outgoing;
 	}
-	
+
 	/**
 	 * Returns a list of hardware (MAC) addresses of bonded (paired) devices.
 	 * 
-	 * @return String array 
+	 * @return String array
 	 */
-	
+
 	public String[] list() {
 		return list(false);
 	}
@@ -178,24 +205,24 @@ public class BtSerial {
 	/*
 	 * Some stubs for future implementation:
 	 */
-//	public void startDiscovery() {
-//		// this method will start a separate thread to handle discovery
-//	}
-//
-//	public void pairWith(String thisAddress) {
-//		// this method will pair with a device given a MAC address
-//	}
-//
-//	public boolean discoveryComplete() {
-//		// this method will return whether discovery is complete,
-//		// so the user can then list devices
-//		return false;
-//	}
-	
+	// public void startDiscovery() {
+	// // this method will start a separate thread to handle discovery
+	// }
+	//
+	// public void pairWith(String thisAddress) {
+	// // this method will pair with a device given a MAC address
+	// }
+	//
+	// public boolean discoveryComplete() {
+	// // this method will return whether discovery is complete,
+	// // so the user can then list devices
+	// return false;
+	// }
+
 	/**
 	 * Returns the name of the currently connected device.
 	 * 
-	 * @return String 
+	 * @return String
 	 */
 
 	public String getName() {
@@ -204,21 +231,21 @@ public class BtSerial {
 		else
 			return "no device connected";
 	}
-	
+
 	/**
 	 * Connects to a Bluetooth device.
 	 * 
-	 * The connect() method will attempt to determine what type of
-	 * device is currently specified by mac and will select one of
-	 * the following Service Profile UUIDs accordingly.
+	 * The connect() method will attempt to determine what type of device is
+	 * currently specified by mac and will select one of the following Service
+	 * Profile UUIDs accordingly.
 	 * <p>
-	 * Currently only Android-to-serial modem (Arduino) and Android-
-	 * to-serial port (computer) connections are supported.
+	 * Currently only Android-to-serial modem (Arduino) and Android- to-serial
+	 * port (computer) connections are supported.
 	 * <p>
-	 * TODO: Implement listen method for Android-to-Android connections
 	 * 
-	 * @param mac - hardware (MAC) address of the remote device
-	 * @return boolean flag for if connection was successful 
+	 * @param mac
+	 *            - hardware (MAC) address of the remote device
+	 * @return boolean flag for if connection was successful
 	 */
 
 	public synchronized boolean connect(String mac) {
@@ -234,38 +261,33 @@ public class BtSerial {
 			mDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(mac);
 			/* Create the RFCOMM sockets */
 			try {
-				int deviceMajorClass = mDevice.getBluetoothClass().getMajorDeviceClass();
-				/* From http://developer.android.com/reference/android/bluetooth/BluetoothClass.Device.Major.html
-				 * public static final int AUDIO_VIDEO	Constant Value: 1024 (0x00000400)
-				 * public static final int COMPUTER	Constant Value: 256 (0x00000100)
-				 * public static final int HEALTH	Constant Value: 2304 (0x00000900)
-				 * public static final int IMAGING	Constant Value: 1536 (0x00000600)
-				 * public static final int MISC	Constant Value: 0 (0x00000000)
-				 * public static final int NETWORKING	Constant Value: 768 (0x00000300)
-				 * public static final int PERIPHERAL	Constant Value: 1280 (0x00000500)
-				 * public static final int PHONE	Constant Value: 512 (0x00000200)
-				 * public static final int TOY	Constant Value: 2048 (0x00000800)
-				 * public static final int UNCATEGORIZED	Constant Value: 7936 (0x00001f00)
-				 * public static final int WEARABLE	Constant Value: 1792 (0x00000700)
-				 */
-				if (deviceMajorClass == 512) {
-					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSecure); //if the device is a phone
+				int deviceMajorClass = mDevice.getBluetoothClass()
+						.getMajorDeviceClass();
+
+				if (deviceMajorClass == 512) { // if the device is a phone
+					mSocket = mDevice
+							.createRfcommSocketToServiceRecord(uuidSecure);
 					Log.i(TAG, "connecting to phone");
-				}
-				else if (deviceMajorClass == 256) {
-					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp); //if the device is a computer
+
+				} else if (deviceMajorClass == 256) { // if the device is a
+														// computer
+					mSocket = mDevice
+							.createRfcommSocketToServiceRecord(uuidSpp);
 					Log.i(TAG, "connecting to computer");
-				}
-				else if (deviceMajorClass == 7936) {
-					mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp); //if the device is uncategorized (like a BtMate modem for Arduino)
+				} else if (deviceMajorClass == 7936) {
+					// if the device is uncategorized (like a BtMate modem for
+					// Arduino)
+					mSocket = mDevice
+							.createRfcommSocketToServiceRecord(uuidSpp);
 					Log.i(TAG, "connecting to uncategorized");
 				}
-				
+
 				mSocket.connect();
 
 				// Start the thread to manage the connection and perform
 				// transmissions
-				mConnectedThread = new ConnectedThread(mSocket, bufferlength);
+				mConnectedThread = new ConnectedThread(mSocket, bufferlength,
+						this);
 				mConnectedThread.start();
 
 				Log.i(TAG, "Connected to device " + mDevice.getName() + " ["
@@ -285,8 +307,21 @@ public class BtSerial {
 			return connected;
 		}
 	}
-	
-	
+
+	/**
+	 * Opens a BluetoothServerSocket to listen for connections Primarily
+	 * intended for Android-to-Android connections using UUID
+	 * fa87c0d0-afac-11de-8a39-0800200c9a66
+	 * 
+	 * @return
+	 */
+//	public synchronized void listen() {
+//		mServerSocket = mAdapter
+//				.listenUsingRfcommWithServiceRecord("SecureData",
+//						uuidSecure);
+//			
+//	}
+
 	/**
 	 * Returns the available number of bytes in the buffer.
 	 * 
@@ -300,7 +335,7 @@ public class BtSerial {
 	 * Displays the Library welcome message
 	 */
 	private void welcome() {
-		Log.i(TAG, "##library.name## "+ VERSION + " by ##author##");
+		Log.i(TAG, "##library.name## " + VERSION + " by ##author##");
 	}
 
 	/**
@@ -372,7 +407,8 @@ public class BtSerial {
 	 * Returns the available number of bytes in the buffer, and copies the
 	 * buffer contents to the passed byte[]
 	 * 
-	 * @param outgoing[]
+	 * @param outgoing
+	 *            []
 	 * @return
 	 */
 	public int readBytes(byte outgoing[]) {
@@ -381,8 +417,8 @@ public class BtSerial {
 	}
 
 	/**
-	 * Returns a byte buffer until the byte interesting. If the byte interesting doesn't exist in the
-	 * current buffer, null is returned.
+	 * Returns a byte buffer until the byte interesting. If the byte interesting
+	 * doesn't exist in the current buffer, null is returned.
 	 * 
 	 * @param interesting
 	 * @return array of bytes retreived from buffer
@@ -391,21 +427,21 @@ public class BtSerial {
 		return mConnectedThread.readBytesUntil(interesting);
 	}
 
-//	/**
-//	 * TODO
-//	 * 
-//	 * @param b
-//	 * @param buffer
-//	 */
-//	public void readBytesUntil(byte b, byte[] buffer) {
-//		Log.i(TAG, "Will do a.s.a.p.");
-//	}
+	// /**
+	// * TODO
+	// *
+	// * @param b
+	// * @param buffer
+	// */
+	// public void readBytesUntil(byte b, byte[] buffer) {
+	// Log.i(TAG, "Will do a.s.a.p.");
+	// }
 
 	/**
 	 * Read the next byte in the buffer as a char
 	 * 
-	 * @return next byte in the buffer as a char; if nothing is there it
-	 * returns -1.
+	 * @return next byte in the buffer as a char; if nothing is there it returns
+	 *         -1.
 	 */
 	public char readChar() {
 		return (char) read();
@@ -424,7 +460,8 @@ public class BtSerial {
 	/**
 	 * Returns the buffer as string until character c.
 	 * 
-	 * @param c - character to read until
+	 * @param c
+	 *            - character to read until
 	 * @return String data read before encountering c
 	 */
 	public String readStringUntil(char c) {
@@ -443,8 +480,9 @@ public class BtSerial {
 	/**
 	 * Sets the number of bytes to buffer.
 	 * 
-	 * @param bytes new size of the buffer
-	 * @return 
+	 * @param bytes
+	 *            new size of the buffer
+	 * @return
 	 */
 	public int buffer(int bytes) {
 		return mConnectedThread.buffer(bytes);
@@ -480,10 +518,10 @@ public class BtSerial {
 	/**
 	 * Disconnects the Bluetooth socket.
 	 * 
-	 * This should be called in the pause() and stop() methods inside the
-	 * sketch in order to ensure that the socket is properly closed when the
-	 * sketch is not running. The connection should be re-established in a
-	 * resume() method if the sketch loses and then regains focus.
+	 * This should be called in the pause() and stop() methods inside the sketch
+	 * in order to ensure that the socket is properly closed when the sketch is
+	 * not running. The connection should be re-established in a resume() method
+	 * if the sketch loses and then regains focus.
 	 * 
 	 * @see connect()
 	 */

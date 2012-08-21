@@ -17,7 +17,7 @@ int val;      // Data received from the Bluetooth serial port
 
 void setup() 
 {
-  size(200, 200);
+  size(displayWidth, displayHeight);
   bt = new BtSerial(this);
   println(bt.list(true)); //get list of paired devices (with extended information)
   remoteAddress = bt.list()[3]; //get only the hardware address for the specific entry
@@ -26,20 +26,21 @@ void setup()
 }
 
 void draw() {
-  if ( bt.isConnected() ) {
-    if ( bt.available() > 0) {  // If data is available,
-      val = bt.read();         // read it and store it in val
-      println(val);
-    }
-    background(255);             // Set background to white
-    if (val == 0) {              // If the serial value is 0,
-      fill(0);                   // set fill to black
-    } 
-    else {                       // If the serial value is not 0,
-      fill(204);                 // set fill to light gray
-    }
-  } 
-  rect(50, 50, 100, 100);
+  
+  background(255);             // Set background to white
+  if (val == 0) {              // If the serial value is 0,
+    fill(0);                   // set fill to black
+  }
+  
+  else {                       // If the serial value is not 0,
+    fill(204);                 // set fill to light gray
+  }
+  rectMode(CENTER);
+  rect(width/2, height/2, width/3, width/3); // draw a square in the center of the screen
+}
+
+void newData(BtSerial bt) {
+  val = bt.read(); //update val whenever new data is received
 }
 
 void pause() {
