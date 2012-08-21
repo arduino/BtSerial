@@ -28,12 +28,12 @@ public class ConnectedThread extends Thread {
 	private final String TAG = "System.out";
 
 	private BtSerial mBtSerial;
-	
+
 	public ConnectedThread(BluetoothSocket socket, int bufferLength,
 			BtSerial mBtSerial) {
 		this.mBtSerial = mBtSerial;
 		mmSocket = socket;
-		
+
 		InputStream tmpIn = null;
 		OutputStream tmpOut = null;
 		mBufferLength = bufferLength;
@@ -56,16 +56,15 @@ public class ConnectedThread extends Thread {
 	@Override
 	public void run() {
 		// Log.i(TAG, "ConnectedThread running");
-		int bytes; // bytes returned from read()
 
 		// Keep listening to the InputStream until an exception occurs
 		while (true) {
 			try {
+				//String outputMessage = mmInStream.available() + " bytes available";
+				//Log.i(TAG, outputMessage);
 				// Read from the InputStream
 				while (mmInStream.available() > 0) {
-					// String outputMessage = mmInStream.available() +
-					// " bytes available";
-					// Log.i(TAG, outputMessage);
+
 					synchronized (buffer) {
 						if (bufferLast == buffer.length) {
 							byte temp[] = new byte[bufferLast << 1];
@@ -73,10 +72,11 @@ public class ConnectedThread extends Thread {
 							buffer = temp;
 						}
 						buffer[bufferLast++] = (byte) mmInStream.read();
-						newData();
 					}
+					newData();
 				}
 			} catch (IOException e) {
+				Log.e(TAG, e.getMessage());
 				break;
 			}
 		}

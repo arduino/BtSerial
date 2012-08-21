@@ -27,20 +27,25 @@ void setup() {
   bt = new BtSerial(this);
 
   println(bt.list(true)); //get list of paired devices (with extended information)
-  remoteAddress = bt.list()[4]; //get only the hardware address for the specific entry
+  remoteAddress = bt.list()[0]; //get only the hardware address for the specific entry
 
   bt.connect(remoteAddress); // connect to the device
 }
 
 void draw() {
   background(0);
-  if (bt.isConnected()) {
-    if (bt.available() > 0) {
-      inByte = bt.read();
-    }
-  }
+//  if (bt.isConnected()) {
+//    if (bt.available() > 0) {
+//      inByte = bt.read();
+//    }
+//  }
+  if (bt.isConnected()) if (bt.available() > 0) background(128);
   text("Last Received: " + inByte, 10, 130);
   text("Last Sent: " + whichKey, 10, 100);
+}
+
+void newData(BtSerial bt){
+  inByte = bt.read();
 }
 
 void mousePressed() {
@@ -68,7 +73,8 @@ void stop() {
 void resume() {
   if (bt != null) {
     bt.connect(remoteAddress);
-    println("Bluetooth reconnected");
+    if (bt.isConnected()) println("Bluetooth reconnected");
+    else println("connection failed");
   }
 }
 

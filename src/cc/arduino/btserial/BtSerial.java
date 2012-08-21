@@ -94,6 +94,11 @@ public class BtSerial {
 		this.ctx = ctx;
 		welcome();
 
+		Looper.prepare(); // this line is necessary to get BtSerial to
+							// initialize on my Nook Color running Cyanogenmod,
+							// but it is not required on my Galaxy Nexus running
+							// ICS. I don't get it.
+
 		try {
 			mAdapter = BluetoothAdapter.getDefaultAdapter();
 		} catch (Exception e) {
@@ -297,6 +302,7 @@ public class BtSerial {
 				return connected;
 			} catch (IOException e) {
 				Log.i(TAG, "Couldn't get a connection");
+				Log.e(TAG, e.getMessage());
 				connected = false;
 				return connected;
 			}
@@ -315,12 +321,92 @@ public class BtSerial {
 	 * 
 	 * @return
 	 */
-//	public synchronized void listen() {
-//		mServerSocket = mAdapter
-//				.listenUsingRfcommWithServiceRecord("SecureData",
-//						uuidSecure);
-//			
-//	}
+	public synchronized void listen() {
+		AcceptThread listenThread = new AcceptThread();
+		listenThread.start();
+	}
+
+	/**
+	 * This thread runs while listening for incoming connections. It behaves
+	 * like a server-side client. It runs until a connection is accepted (or
+	 * until cancelled).
+	 * 
+	 * Based on the Android BluetoothChat example
+	 */
+	private class AcceptThread extends Thread {
+		// The local server socket
+		private final BluetoothServerSocket mServerSocket;
+
+		public AcceptThread() {
+			BluetoothServerSocket tmp = null;
+			// Create a new listening server socket
+			try {
+				tmp = mAdapter.listenUsingRfcommWithServiceRecord(
+						"SecureSerial", uuidSecure);
+			} catch (IOException e) {
+				Log.e(TAG, "Socket listen() failed", e);
+			}
+			mServerSocket = tmp;
+		}
+
+		public void run() {
+
+			mSocket = null;
+
+			// Listen to the server socket if we're not connected
+			while (!isConnected()) {
+				try {
+					// This is a blocking call and will only return on a
+					// successful connection or an exception
+					mSocket = mServerSocket.accept();
+					mDevice = mSocket.getRemoteDevice();
+				} catch (IOException e) {
+					Log.e(TAG, "Socket accept() failed", e);
+					break;
+				}
+
+				// If a connection was accepted
+				if (mSocket != null) {
+					synchronized (BtSerial.this) {
+						if (!isConnected()) {
+							try {
+								// Situation normal. Start the connected thread.
+								mConnectedThread = new ConnectedThread(mSocket,
+										bufferlength, BtSerial.this);
+								mConnectedThread.start();
+								Log.i(TAG,
+										"Connected to device "
+												+ mDevice.getName() + " ["
+												+ mDevice.getAddress() + "]");
+								// Set the status
+								connected = true;
+							} catch (Exception ex) {
+								Log.i(TAG, "Couldn't get a connection");
+								Log.e(TAG, ex.getMessage());
+								connected = false;
+							}
+
+						} else {
+							try {
+								mSocket.close();
+							} catch (IOException e) {
+								Log.e(TAG, "Could not close unwanted socket", e);
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		public void cancel() {
+			try {
+				mServerSocket.close();
+			} catch (IOException e) {
+				Log.e(TAG, "Socket close() of server failed", e);
+			}
+		}
+	}
 
 	/**
 	 * Returns the available number of bytes in the buffer.
@@ -541,7 +627,7 @@ public class BtSerial {
 				connected = false;
 				/* If it successfully closes I guess we just return a success? */
 				// return 0;
-				Log.i(TAG, "disconnected.");
+				//Log.i(TAG, "disconnected.");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				Log.i(TAG, "whoops! disconnect() encountred an error.");

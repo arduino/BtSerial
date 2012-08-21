@@ -20,7 +20,7 @@ void setup()
   size(displayWidth, displayHeight);
   bt = new BtSerial(this);
   println(bt.list(true)); //get list of paired devices (with extended information)
-  remoteAddress = bt.list()[3]; //get only the hardware address for the specific entry
+  remoteAddress = bt.list()[6]; //get only the hardware address for the specific entry
 
   bt.connect(remoteAddress);
 }
