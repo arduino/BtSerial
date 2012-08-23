@@ -1,11 +1,11 @@
 /**
  * Simple Read
+ * Adapted from the Serial library example for BtSerial by Joshua Albers 
  * 
- * Read data from the serial port and change the color of a rectangle
+ * Read data from the Bluetooth device and change the color of a rectangle
  * when a switch connected to a Wiring or Arduino board is pressed and released.
  * This example works with the Wiring / Arduino program that follows below.
  *
- * Adapted for BtSerial with Processing Android by Joshua Albers
  */
 
 
@@ -15,12 +15,13 @@ BtSerial bt;  // Create object from BtSerial class
 String remoteAddress; // MAC address of the device to which the Android will connect
 int val;      // Data received from the Bluetooth serial port
 
-void setup() 
-{
+void setup() {
   size(displayWidth, displayHeight);
-  bt = new BtSerial(this);
+  rectMode(CENTER);
+  
+  bt = new BtSerial(this); //create the BtSerial object that will handle the connection
   println(bt.list(true)); //get list of paired devices (with extended information)
-  remoteAddress = bt.list()[6]; //get only the hardware address for the specific entry
+  remoteAddress = bt.list()[3]; //get only the hardware address for the specific entry
 
   bt.connect(remoteAddress);
 }
@@ -30,12 +31,11 @@ void draw() {
   background(255);             // Set background to white
   if (val == 0) {              // If the serial value is 0,
     fill(0);                   // set fill to black
-  }
-  
+  }  
   else {                       // If the serial value is not 0,
     fill(204);                 // set fill to light gray
   }
-  rectMode(CENTER);
+
   rect(width/2, height/2, width/3, width/3); // draw a square in the center of the screen
 }
 

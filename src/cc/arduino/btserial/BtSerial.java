@@ -104,7 +104,7 @@ public class BtSerial {
 		} catch (Exception e) {
 			Log.e(TAG, Log.getStackTraceString(e));
 		}
-		Log.i(TAG, "BluetoothAdapter started");
+		//Log.i(TAG, "BluetoothAdapter started");
 
 		// reflection to check whether host applet has a call for
 		// public void serialEvent(processing.serial.Serial)
@@ -116,6 +116,10 @@ public class BtSerial {
 			// no such method, or an error.. which is fine, just ignore
 		}
 	}
+	
+	/*
+	 * Callback triggered whenever there is data in the buffer.
+	 */
 
 	public void newData() {
 		if (newDataMethod != null) {
@@ -206,6 +210,35 @@ public class BtSerial {
 	public String[] list() {
 		return list(false);
 	}
+	
+	/**
+	 * Returns the name of the connected remote device
+	 * It not connected, returns "-1"
+	 */
+	
+	public String getRemoteName() {
+		if (connected) {
+			String info = mDevice.getName();
+			return(info);
+		} else {
+			return("-1");
+		}
+	}
+	
+	/**
+	 * Returns the name of the connected remote device
+	 * It not connected, returns "-1"
+	 */
+	
+	public String getRemoteAddress() {
+		if (connected) {
+			String info = mDevice.getAddress();
+			return(info);
+		} else {
+			return("-1");
+		}
+	}
+	
 
 	/*
 	 * Some stubs for future implementation:
@@ -272,19 +305,19 @@ public class BtSerial {
 				if (deviceMajorClass == 512) { // if the device is a phone
 					mSocket = mDevice
 							.createRfcommSocketToServiceRecord(uuidSecure);
-					Log.i(TAG, "connecting to phone");
+					//Log.i(TAG, "connecting to phone");
 
 				} else if (deviceMajorClass == 256) { // if the device is a
 														// computer
 					mSocket = mDevice
 							.createRfcommSocketToServiceRecord(uuidSpp);
-					Log.i(TAG, "connecting to computer");
+					//Log.i(TAG, "connecting to computer");
 				} else if (deviceMajorClass == 7936) {
 					// if the device is uncategorized (like a BtMate modem for
 					// Arduino)
 					mSocket = mDevice
 							.createRfcommSocketToServiceRecord(uuidSpp);
-					Log.i(TAG, "connecting to uncategorized");
+					//Log.i(TAG, "connecting to uncategorized");
 				}
 
 				mSocket.connect();

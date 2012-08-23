@@ -1,10 +1,12 @@
 /**
- * Simple Write. 
+ * Simple Write.
+ * Adapted from the Serial library example for BtSerial by Joshua Albers 
+ *
+ * Intended to be used to connect to a device running SerialDuplexServer
  * 
  * Check if the mouse is over a rectangle and writes the status to the serial port. 
  * This example works with the Wiring / Arduino program that follows below.
  *
- * Adapted for BtSerial with Processing Android by Joshua Albers
  */
 
 
@@ -14,10 +16,11 @@ BtSerial bt;  // Create object from BtSerial class
 String remoteAddress; // MAC address of the device to which the Android will connect
 int val;      // Data received from the Bluetooth serial port
 
-void setup() 
-{
-  size(200, 200);
-  bt = new BtSerial(this);
+void setup() {
+  size(displayWidth, displayHeight);
+  rectMode(CENTER);
+
+  bt = new BtSerial(this); //create the BtSerial object that will handle the connection
   println(bt.list(true)); //get list of paired devices (with extended information)
   remoteAddress = bt.list()[2]; //get only the hardware address for the specific entry
 
@@ -34,11 +37,11 @@ void draw() {
     fill(0);                      // change color and
     bt.write('L');              // send an L otherwise
   }
-  rect(50, 50, 100, 100);         // Draw a square
+  rect(width/2, height/2, 100, 100);         // Draw a square
 }
 
 boolean mouseOverRect() { // Test if mouse is over square
-  return ((mouseX >= 50) && (mouseX <= 150) && (mouseY >= 50) && (mouseY <= 150));
+  return ((mouseX >= (width/2-50)) && (mouseX <= (width/2-50)) && (mouseY >= (width/2+50)) && (mouseY <= (width/2+50)));
 }
 
 
