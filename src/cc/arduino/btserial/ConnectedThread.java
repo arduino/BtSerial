@@ -73,7 +73,7 @@ public class ConnectedThread extends Thread {
 						}
 						buffer[bufferLast++] = (byte) mmInStream.read();
 					}
-					newData();
+					btSerialEvent();
 				}
 			} catch (IOException e) {
 				Log.e(TAG, e.getMessage());
@@ -82,9 +82,9 @@ public class ConnectedThread extends Thread {
 		}
 	}
 
-	public void newData() {
-		mBtSerial.newData();
-		// Log.i(TAG, "newData called from ConnectedThread");
+	public void btSerialEvent() {
+		mBtSerial.btSerialEvent();
+		// Log.i(TAG, "btSerialEvent called from ConnectedThread");
 	}
 
 	/* Call this from the main Activity to send data to the remote device */

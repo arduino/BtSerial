@@ -42,7 +42,7 @@ void draw() {
   text("Last Received: " + inByte, 10, 200);
 }
 
-void newData(BtSerial bt){
+void btSerialEvent(BtSerial bt){
   inByte = bt.read();
 }
 

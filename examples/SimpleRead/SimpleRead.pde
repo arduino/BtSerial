@@ -39,7 +39,7 @@ void draw() {
   rect(width/2, height/2, width/3, width/3); // draw a square in the center of the screen
 }
 
-void newData(BtSerial bt) {
+void btSerialEvent(BtSerial bt) {
   val = bt.read(); //update val whenever new data is received
 }
 

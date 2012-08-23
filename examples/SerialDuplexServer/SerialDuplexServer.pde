@@ -47,7 +47,7 @@ void draw() {
   }
 }
 
-void newData(BtSerial bt) {
+void btSerialEvent(BtSerial bt) {
   inByte = bt.read();
 }
 

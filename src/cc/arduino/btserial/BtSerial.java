@@ -63,10 +63,10 @@ public class BtSerial {
 	private BluetoothDevice mDevice;
 	private UUID uuidSpp = UUID
 			.fromString("00001101-0000-1000-8000-00805F9B34FB");
-	private UUID uuidSecure = UUID
-			.fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
-	private UUID uuidInecure = UUID
-			.fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
+	// private UUID uuidSecure = UUID
+	// .fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+	// private UUID uuidInecure = UUID
+	// .fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
 	/* Socket & streams for BT communication */
 	private BluetoothSocket mSocket;
@@ -81,7 +81,7 @@ public class BtSerial {
 	private int bufferIndex;
 	private int bufferLast;
 
-	Method newDataMethod;
+	Method btSerialEventMethod;
 
 	/* Debug variables */
 	public static boolean DEBUG = true;
@@ -104,34 +104,34 @@ public class BtSerial {
 		} catch (Exception e) {
 			Log.e(TAG, Log.getStackTraceString(e));
 		}
-		//Log.i(TAG, "BluetoothAdapter started");
+		// Log.i(TAG, "BluetoothAdapter started");
 
 		// reflection to check whether host applet has a call for
 		// public void serialEvent(processing.serial.Serial)
 		// which would be called each time an event comes in
 		try {
-			newDataMethod = ctx.getClass().getMethod("newData",
+			btSerialEventMethod = ctx.getClass().getMethod("btSerialEvent",
 					new Class[] { BtSerial.class });
 		} catch (Exception e) {
 			// no such method, or an error.. which is fine, just ignore
 		}
 	}
-	
+
 	/*
 	 * Callback triggered whenever there is data in the buffer.
 	 */
 
-	public void newData() {
-		if (newDataMethod != null) {
+	public void btSerialEvent() {
+		if (btSerialEventMethod != null) {
 			try {
-				newDataMethod.invoke(ctx, new Object[] { this });
-				// Log.i(TAG, "newData called from BtSerial");
+				btSerialEventMethod.invoke(ctx, new Object[] { this });
+				// Log.i(TAG, "btSerialEvent called from BtSerial");
 			} catch (Exception e) {
-				String msg = "error, disabling newData() for "
+				String msg = "error, disabling btSerialEvent() for "
 						+ mDevice.getName();
 				Log.e(TAG, msg);
 				e.printStackTrace();
-				newDataMethod = null;
+				btSerialEventMethod = null;
 			}
 		}
 	}
@@ -210,35 +210,34 @@ public class BtSerial {
 	public String[] list() {
 		return list(false);
 	}
-	
+
 	/**
-	 * Returns the name of the connected remote device
-	 * It not connected, returns "-1"
+	 * Returns the name of the connected remote device It not connected, returns
+	 * "-1"
 	 */
-	
+
 	public String getRemoteName() {
 		if (connected) {
 			String info = mDevice.getName();
-			return(info);
+			return (info);
 		} else {
-			return("-1");
+			return ("-1");
 		}
 	}
-	
+
 	/**
-	 * Returns the name of the connected remote device
-	 * It not connected, returns "-1"
+	 * Returns the name of the connected remote device It not connected, returns
+	 * "-1"
 	 */
-	
+
 	public String getRemoteAddress() {
 		if (connected) {
 			String info = mDevice.getAddress();
-			return(info);
+			return (info);
 		} else {
-			return("-1");
+			return ("-1");
 		}
 	}
-	
 
 	/*
 	 * Some stubs for future implementation:
@@ -299,26 +298,9 @@ public class BtSerial {
 			mDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(mac);
 			/* Create the RFCOMM sockets */
 			try {
-				int deviceMajorClass = mDevice.getBluetoothClass()
-						.getMajorDeviceClass();
 
-				if (deviceMajorClass == 512) { // if the device is a phone
-					mSocket = mDevice
-							.createRfcommSocketToServiceRecord(uuidSecure);
-					//Log.i(TAG, "connecting to phone");
-
-				} else if (deviceMajorClass == 256) { // if the device is a
-														// computer
-					mSocket = mDevice
-							.createRfcommSocketToServiceRecord(uuidSpp);
-					//Log.i(TAG, "connecting to computer");
-				} else if (deviceMajorClass == 7936) {
-					// if the device is uncategorized (like a BtMate modem for
-					// Arduino)
-					mSocket = mDevice
-							.createRfcommSocketToServiceRecord(uuidSpp);
-					//Log.i(TAG, "connecting to uncategorized");
-				}
+				mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp);
+				// Log.i(TAG, "connecting to uncategorized");
 
 				mSocket.connect();
 
@@ -375,7 +357,7 @@ public class BtSerial {
 			// Create a new listening server socket
 			try {
 				tmp = mAdapter.listenUsingRfcommWithServiceRecord(
-						"SecureSerial", uuidSecure);
+						"SerialPortProfile", uuidSpp);
 			} catch (IOException e) {
 				Log.e(TAG, "Socket listen() failed", e);
 			}
@@ -660,7 +642,7 @@ public class BtSerial {
 				connected = false;
 				/* If it successfully closes I guess we just return a success? */
 				// return 0;
-				//Log.i(TAG, "disconnected.");
+				// Log.i(TAG, "disconnected.");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				Log.i(TAG, "whoops! disconnect() encountred an error.");
