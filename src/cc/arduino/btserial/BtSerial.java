@@ -1,37 +1,42 @@
 /**
- * you can put a one sentence description of your library here.
+ * ##project.name##
+ * ##library.sentence##
  *
  * ##copyright##
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * This file is part of BtSerial.
  * 
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ *   BtSerial is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Lesser General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
  * 
- * You should have received a copy of the GNU Lesser General
- * Public License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place, Suite 330,
- * Boston, MA  02111-1307  USA
+ *   BtSerial is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU Lesser General Public License for more details.
+ * 
+ *   You should have received a copy of the GNU Lesser General Public License
+ *   along with BtSerial.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * @author		##author##
  * @modified	##date##
- * @version		##version##
+ * @version		##library.prettyVersion##
  */
 
 package cc.arduino.btserial;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
+import java.lang.reflect.*;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -41,38 +46,27 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-
-
 /* TODO */
-// ** available()
-// ** read()
-// ** connect()
-// ** readChar()
-// ** readBytes()
-// readBytesUntil()
-// readString()
-// readStringUntil()
 // ** buffer()
 // bufferUntil()
-// ** last()
-// ** lastChar()
-// ** list()
-// ** write()
-// ** clear()
-// ** stop()
 // btSerialEvent()
 
-public class BtSerial implements Runnable {
+public class BtSerial {
 
 	/* PApplet context */
 	private Context ctx;
 
-	public final static String VERSION = "##version##";
+	public final static String VERSION = "##library.prettyVersion##";
 
 	/* Bluetooth */
 	private BluetoothAdapter mAdapter;
 	private BluetoothDevice mDevice;
-	private UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	private UUID uuidSpp = UUID
+			.fromString("00001101-0000-1000-8000-00805F9B34FB");
+	// private UUID uuidSecure = UUID
+	// .fromString("fa87c0d0-afac-11de-8a39-0800200c9a66");
+	// private UUID uuidInecure = UUID
+	// .fromString("8ce255c0-200a-11e0-ac64-0800200c9a66");
 
 	/* Socket & streams for BT communication */
 	private BluetoothSocket mSocket;
@@ -84,53 +78,94 @@ public class BtSerial implements Runnable {
 	private int available = 0;
 	private byte[] buffer;
 	private byte[] rawbuffer;
+	private int bufferIndex;
+	private int bufferLast;
+
+	Method btSerialEventMethod;
 
 	/* Debug variables */
-	public static boolean DEBUG = false;
-	public static String DEBUGTAG = "##name## ##version## Debug message: ";
+	public static boolean DEBUG = true;
+	public static String DEBUGTAG = "##library.name## " + VERSION
+			+ " Debug message: ";
 
-	
+	private final String TAG = "System.out";
+
 	public BtSerial(Context ctx) {
 		this.ctx = ctx;
 		welcome();
 
-		/* Init the adapter */
-		new Handler(Looper.getMainLooper()).post(new Runnable() {
-			@Override
-			public void run() {
-				mAdapter = BluetoothAdapter.getDefaultAdapter();
+		Looper.prepare(); // this line is necessary to get BtSerial to
+							// initialize on my Nook Color running Cyanogenmod,
+							// but it is not required on my Galaxy Nexus running
+							// ICS. I don't get it.
+
+		try {
+			mAdapter = BluetoothAdapter.getDefaultAdapter();
+		} catch (Exception e) {
+			Log.e(TAG, Log.getStackTraceString(e));
+		}
+		// Log.i(TAG, "BluetoothAdapter started");
+
+		// reflection to check whether host applet has a call for
+		// public void serialEvent(processing.serial.Serial)
+		// which would be called each time an event comes in
+		try {
+			btSerialEventMethod = ctx.getClass().getMethod("btSerialEvent",
+					new Class[] { BtSerial.class });
+		} catch (Exception e) {
+			// no such method, or an error.. which is fine, just ignore
+		}
+	}
+
+	/*
+	 * Callback triggered whenever there is data in the buffer.
+	 */
+
+	public void btSerialEvent() {
+		if (btSerialEventMethod != null) {
+			try {
+				btSerialEventMethod.invoke(ctx, new Object[] { this });
+				// Log.i(TAG, "btSerialEvent called from BtSerial");
+			} catch (Exception e) {
+				String msg = "error, disabling btSerialEvent() for "
+						+ mDevice.getName();
+				Log.e(TAG, msg);
+				e.printStackTrace();
+				btSerialEventMethod = null;
 			}
-		});
+		}
 	}
 
 	/**
 	 * Returns the status of the connection.
 	 * 
-	 * @return
+	 * @return true or false
 	 */
 	public boolean isConnected() {
 		return connected;
 	}
 
 	/**
-	 * Returns whether the adapter is enabled.
+	 * Returns whether the Bluetooth dapter is enabled.
 	 * 
-	 * @return
+	 * @return true of false
 	 */
 	public boolean isEnabled() {
-		if (mAdapter!=null) 
+		if (mAdapter != null)
 			return mAdapter.isEnabled();
-		else return false;
+		else
+			return false;
 	}
 
 	/**
-	 * Returns the list of bonded devices.
+	 * Returns a list of bonded (paired) devices.
 	 * 
-	 * @return
+	 * @param info
+	 *            flag to control display of additional information (device
+	 *            names and types)
+	 * @return String array
 	 */
-
-
-	public String[] list() {
+	public String[] list(boolean info) {
 		Vector<String> list = new Vector<String>();
 		Set<BluetoothDevice> devices;
 
@@ -143,13 +178,22 @@ public class BtSerial implements Runnable {
 			// remoteDevice and then print it's name
 			for (int i = 0; i < devices.size(); i++) {
 				BluetoothDevice thisDevice = mAdapter
-				.getRemoteDevice(deviceArray[i].toString());
-				list.addElement(thisDevice.getAddress());
+						.getRemoteDevice(deviceArray[i].toString());
+				String element = thisDevice.getAddress();
+				if (info) {
+					element += ","
+							+ thisDevice.getName()
+							+ ","
+							+ thisDevice.getBluetoothClass()
+									.getMajorDeviceClass(); // extended
+															// information
+				}
+				list.addElement(element);
 			}
 		} catch (UnsatisfiedLinkError e) {
-			// errorMessage("devices", e);
+			Log.e(TAG, Log.getStackTraceString(e));
 		} catch (Exception e) {
-			// errorMessage("devices", e);
+			Log.e(TAG, Log.getStackTraceString(e));
 		}
 
 		String outgoing[] = new String[list.size()];
@@ -157,35 +201,95 @@ public class BtSerial implements Runnable {
 		return outgoing;
 	}
 
+	/**
+	 * Returns a list of hardware (MAC) addresses of bonded (paired) devices.
+	 * 
+	 * @return String array
+	 */
+
+	public String[] list() {
+		return list(false);
+	}
+
+	/**
+	 * Returns the name of the connected remote device It not connected, returns
+	 * "-1"
+	 */
+
+	public String getRemoteName() {
+		if (connected) {
+			String info = mDevice.getName();
+			return (info);
+		} else {
+			return ("-1");
+		}
+	}
+
+	/**
+	 * Returns the name of the connected remote device It not connected, returns
+	 * "-1"
+	 */
+
+	public String getRemoteAddress() {
+		if (connected) {
+			String info = mDevice.getAddress();
+			return (info);
+		} else {
+			return ("-1");
+		}
+	}
+
 	/*
 	 * Some stubs for future implementation:
-	 * 
 	 */
-	public void startDiscovery() {
-		// this method will start a separate thread to handle discovery
-	}
+	// public void startDiscovery() {
+	// // this method will start a separate thread to handle discovery
+	// }
+	//
+	// public void pairWith(String thisAddress) {
+	// // this method will pair with a device given a MAC address
+	// }
+	//
+	// public boolean discoveryComplete() {
+	// // this method will return whether discovery is complete,
+	// // so the user can then list devices
+	// return false;
+	// }
 
-	public void pairWith(String thisAddress) {
-		// this method will pair with a device given a MAC address
-	}
-	public boolean discoveryComplete() {
-		// this method will return whether discovery is complete,
-		// so the user can then list devices
-		return false;
-	}
-
+	/**
+	 * Returns the name of the currently connected device.
+	 * 
+	 * @return String
+	 */
 
 	public String getName() {
-		if (mDevice !=null) return mDevice.getName();
-		else return "no device connected";
+		if (mDevice != null)
+			return mDevice.getName();
+		else
+			return "no device connected";
 	}
 
+	/**
+	 * Connects to a Bluetooth device.
+	 * 
+	 * The connect() method will attempt to determine what type of device is
+	 * currently specified by mac and will select one of the following Service
+	 * Profile UUIDs accordingly.
+	 * <p>
+	 * Currently only Android-to-serial modem (Arduino) and Android- to-serial
+	 * port (computer) connections are supported.
+	 * <p>
+	 * 
+	 * @param mac
+	 *            - hardware (MAC) address of the remote device
+	 * @return boolean flag for if connection was successful
+	 */
 
 	public synchronized boolean connect(String mac) {
 		/* Before we connect, make sure to cancel any discovery! */
 		if (mAdapter.isDiscovering()) {
 			mAdapter.cancelDiscovery();
-			if (DEBUG) Log.i("System.out", "Cancelled ongoing discovery");
+			Log.i(TAG, "Cancelled ongoing discovery");
 		}
 
 		/* Make sure we're using a real bluetooth address to connect with */
@@ -194,31 +298,128 @@ public class BtSerial implements Runnable {
 			mDevice = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(mac);
 			/* Create the RFCOMM sockets */
 			try {
-				mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
+
+				mSocket = mDevice.createRfcommSocketToServiceRecord(uuidSpp);
+				// Log.i(TAG, "connecting to uncategorized");
+
 				mSocket.connect();
 
-				
-
-				// Start the thread to manage the connection and perform transmissions
-				mConnectedThread = new ConnectedThread(mSocket, bufferlength);
+				// Start the thread to manage the connection and perform
+				// transmissions
+				mConnectedThread = new ConnectedThread(mSocket, bufferlength,
+						this);
 				mConnectedThread.start();
 
-				if (DEBUG) Log.i("System.out", "Connected to device " + mDevice.getName()
-						+ " [" + mDevice.getAddress() + "]");
-				// Set the status 
+				Log.i(TAG, "Connected to device " + mDevice.getName() + " ["
+						+ mDevice.getAddress() + "]");
+				// Set the status
 				connected = true;
 				return connected;
 			} catch (IOException e) {
-				Log.i("System.out", "Couldn't get a connection");
+				Log.i(TAG, "Couldn't get a connection");
+				Log.e(TAG, e.getMessage());
 				connected = false;
 				return connected;
 			}
 
 		} else {
-			
-			if (DEBUG) Log.i("System.out", "Address is not Bluetooth, please verify MAC.");
+			Log.i(TAG, "Address is not Bluetooth, please verify MAC.");
 			connected = false;
 			return connected;
+		}
+	}
+
+	/**
+	 * Opens a BluetoothServerSocket to listen for connections Primarily
+	 * intended for Android-to-Android connections using UUID
+	 * fa87c0d0-afac-11de-8a39-0800200c9a66
+	 * 
+	 * @return
+	 */
+	public synchronized void listen() {
+		AcceptThread listenThread = new AcceptThread();
+		listenThread.start();
+	}
+
+	/**
+	 * This thread runs while listening for incoming connections. It behaves
+	 * like a server-side client. It runs until a connection is accepted (or
+	 * until cancelled).
+	 * 
+	 * Based on the Android BluetoothChat example
+	 */
+	private class AcceptThread extends Thread {
+		// The local server socket
+		private final BluetoothServerSocket mServerSocket;
+
+		public AcceptThread() {
+			BluetoothServerSocket tmp = null;
+			// Create a new listening server socket
+			try {
+				tmp = mAdapter.listenUsingRfcommWithServiceRecord(
+						"SerialPortProfile", uuidSpp);
+			} catch (IOException e) {
+				Log.e(TAG, "Socket listen() failed", e);
+			}
+			mServerSocket = tmp;
+		}
+
+		public void run() {
+
+			mSocket = null;
+
+			// Listen to the server socket if we're not connected
+			while (!isConnected()) {
+				try {
+					// This is a blocking call and will only return on a
+					// successful connection or an exception
+					mSocket = mServerSocket.accept();
+					mDevice = mSocket.getRemoteDevice();
+				} catch (IOException e) {
+					Log.e(TAG, "Socket accept() failed", e);
+					break;
+				}
+
+				// If a connection was accepted
+				if (mSocket != null) {
+					synchronized (BtSerial.this) {
+						if (!isConnected()) {
+							try {
+								// Situation normal. Start the connected thread.
+								mConnectedThread = new ConnectedThread(mSocket,
+										bufferlength, BtSerial.this);
+								mConnectedThread.start();
+								Log.i(TAG,
+										"Connected to device "
+												+ mDevice.getName() + " ["
+												+ mDevice.getAddress() + "]");
+								// Set the status
+								connected = true;
+							} catch (Exception ex) {
+								Log.i(TAG, "Couldn't get a connection");
+								Log.e(TAG, ex.getMessage());
+								connected = false;
+							}
+
+						} else {
+							try {
+								mSocket.close();
+							} catch (IOException e) {
+								Log.e(TAG, "Could not close unwanted socket", e);
+							}
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		public void cancel() {
+			try {
+				mServerSocket.close();
+			} catch (IOException e) {
+				Log.e(TAG, "Socket close() of server failed", e);
+			}
 		}
 	}
 
@@ -232,10 +433,10 @@ public class BtSerial implements Runnable {
 	}
 
 	/**
-	 * 
+	 * Displays the Library welcome message
 	 */
 	private void welcome() {
-		System.out.println("##name## ##version## by ##author##");
+		Log.i(TAG, "##library.name## " + VERSION + " by ##author##");
 	}
 
 	/**
@@ -247,35 +448,18 @@ public class BtSerial implements Runnable {
 		return VERSION;
 	}
 
-	@Override
-	public void run() {
-		/* Init the buffer */
-		buffer = new byte[bufferlength];
-		rawbuffer = new byte[bufferlength];
-		
-		/* Set the connected state */
-		connected = true;
-
-		while (connected) {
-			/* Read the available bytes into the buffer */
-			rawbuffer= mConnectedThread.read();
-			available = mConnectedThread.available();
-			/* Clone the raw buffer */
-			buffer = rawbuffer.clone();
-		}
-	}
-
 	/**
 	 * Writes a byte[] buffer to the output stream.
 	 * 
 	 * @param buffer
 	 */
-	public  void write(byte[] buffer) {
+	public void write(byte[] buffer) {
 		// Create temporary object
 		ConnectedThread r;
 		// Synchronize a copy of the ConnectedThread
 		synchronized (this) {
-			if (!connected) return;
+			if (!connected)
+				return;
 			r = mConnectedThread;
 		}
 		// Perform the write unsynchronized
@@ -283,31 +467,23 @@ public class BtSerial implements Runnable {
 	}
 
 	/**
-	 * Writes a  String to the output stream.
+	 * Writes a String to the output stream.
 	 * 
 	 * @param thisString
 	 */
-	public  void write(String thisString) {
+	public void write(String thisString) {
 		byte[] thisBuffer = thisString.getBytes();
 		write(thisBuffer);
 	}
 
 	/**
-	 * Writes a  String to the output stream.
+	 * Writes a String to the output stream.
 	 * 
-	 * @param buffer
+	 * @param thisInt
 	 */
-	public  void write(int thisInt) {
-		byte[] thisBuffer = {(byte)thisInt};
+	public void write(int thisInt) {
+		byte[] thisBuffer = { (byte) thisInt };
 		write(thisBuffer);
-	}
-	/**
-	 * Returns the first available byte in "buffer" and then removes it.
-	 * 
-	 * @return
-	 */
-	private int readByte() {
-		return mConnectedThread.readByte();
 	}
 
 	/**
@@ -316,7 +492,7 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public int read() {
-		return readByte();
+		return mConnectedThread.read();
 	}
 
 	/**
@@ -325,70 +501,57 @@ public class BtSerial implements Runnable {
 	 * @return
 	 */
 	public byte[] readBytes() {
-		return mConnectedThread.read();
+		return mConnectedThread.readBytes();
 	}
 
 	/**
 	 * Returns the available number of bytes in the buffer, and copies the
 	 * buffer contents to the passed byte[]
 	 * 
-	 * @param buffer
+	 * @param outgoing
+	 *            []
 	 * @return
 	 */
-	public int readBytes(byte[] buffer) {
-		buffer = mConnectedThread.read().clone();
-		return mConnectedThread.available();
+	public int readBytes(byte outgoing[]) {
+		mConnectedThread.readBytes(outgoing);
+		return outgoing.length;
 	}
 
 	/**
-	 * Returns a bytebuffer until the byte b. If the byte b doesn't exist in the
-	 * current buffer, null is returned.
+	 * Returns a byte buffer until the byte interesting. If the byte interesting
+	 * doesn't exist in the current buffer, null is returned.
 	 * 
-	 * @param b
-	 * @return
+	 * @param interesting
+	 * @return array of bytes retreived from buffer
 	 */
-	public byte[] readBytesUntil(byte b) {
-		/* Read the buffer until the value 'b' is found */
-		for (int i = 0; i < buffer.length; i++) {
-			if (buffer[i] == b) {
-				/* Found the byte, buffer until this index, and return */
-				byte[] returnbuffer = new byte[i];
-				/* Populate the returnbuffer */
-				for (int j = 0; j < returnbuffer.length; j++) {
-					returnbuffer[j] = buffer[j];
-				}
-
-				/* Return buffer */
-				return returnbuffer;
-			}
-		}
-		return null;
+	public byte[] readBytesUntil(byte interesting) {
+		return mConnectedThread.readBytesUntil(interesting);
 	}
 
-	/**
-	 * TODO
-	 * 
-	 * @param b
-	 * @param buffer
-	 */
-	public void readBytesUntil(byte b, byte[] buffer) {
-		if (DEBUG) Log.i("System.out", "Will do a.s.a.p.");
-	}
+	// /**
+	// * TODO
+	// *
+	// * @param b
+	// * @param buffer
+	// */
+	// public void readBytesUntil(byte b, byte[] buffer) {
+	// Log.i(TAG, "Will do a.s.a.p.");
+	// }
 
 	/**
-	 * Returns the next byte in the buffer as a char, if nothing is there it
-	 * returns -1.
+	 * Read the next byte in the buffer as a char
 	 * 
-	 * @return
+	 * @return next byte in the buffer as a char; if nothing is there it returns
+	 *         -1.
 	 */
 	public char readChar() {
-		return (char) readByte();
+		return (char) read();
 	}
 
 	/**
 	 * Returns the buffer as a string.
 	 * 
-	 * @return
+	 * @return contents of the buffer as a String
 	 */
 	public String readString() {
 		String returnstring = new String(readBytes());
@@ -399,7 +562,8 @@ public class BtSerial implements Runnable {
 	 * Returns the buffer as string until character c.
 	 * 
 	 * @param c
-	 * @return
+	 *            - character to read until
+	 * @return String data read before encountering c
 	 */
 	public String readStringUntil(char c) {
 		/* Get the buffer as string */
@@ -418,21 +582,18 @@ public class BtSerial implements Runnable {
 	 * Sets the number of bytes to buffer.
 	 * 
 	 * @param bytes
+	 *            new size of the buffer
 	 * @return
 	 */
 	public int buffer(int bytes) {
-		bufferlength = bytes;
-
-		buffer = new byte[bytes];
-		rawbuffer = buffer.clone();
-
-		return bytes;
+		return mConnectedThread.buffer(bytes);
 	}
 
 	/**
 	 * Returns the last byte in the buffer.
 	 * 
-	 * @return
+	 * @return the last byte in the buffer
+	 * @see char()
 	 */
 	public int last() {
 		return buffer[buffer.length - 1];
@@ -441,7 +602,8 @@ public class BtSerial implements Runnable {
 	/**
 	 * Returns the last byte in the buffer as char.
 	 * 
-	 * @return
+	 * @return the last char in the buffer.
+	 * @see last()
 	 */
 	public char lastChar() {
 		return (char) buffer[buffer.length - 1];
@@ -451,14 +613,18 @@ public class BtSerial implements Runnable {
 	 * Clears the byte buffer.
 	 */
 	public void clear() {
-		buffer = new byte[bufferlength];
 		mConnectedThread.clear();
 	}
 
 	/**
-	 * Disconnects the bluetooth socket.
+	 * Disconnects the Bluetooth socket.
 	 * 
-
+	 * This should be called in the pause() and stop() methods inside the sketch
+	 * in order to ensure that the socket is properly closed when the sketch is
+	 * not running. The connection should be re-established in a resume() method
+	 * if the sketch loses and then regains focus.
+	 * 
+	 * @see connect()
 	 */
 	public synchronized void disconnect() {
 		if (connected) {
@@ -475,12 +641,14 @@ public class BtSerial implements Runnable {
 				/* Set the connected state */
 				connected = false;
 				/* If it successfully closes I guess we just return a success? */
-				//return 0;
+				// return 0;
+				// Log.i(TAG, "disconnected.");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
+				Log.i(TAG, "whoops! disconnect() encountred an error.");
 				e.printStackTrace();
 				/* Otherwise we'll go ahead and say "no, this didn't work well!" */
-				//return 1;
+				// return 1;
 			}
 		}
 	}
@@ -494,4 +662,3 @@ public class BtSerial implements Runnable {
 
 	}
 }
-
